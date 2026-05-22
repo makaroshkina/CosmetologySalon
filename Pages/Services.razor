@@ -1,0 +1,1041 @@
+﻿@page "/services"
+@using CosmetologySalon.Models
+@using CosmetologySalon.DTOs
+@using CosmetologySalon.Services.Interfaces
+@inject IService ServiceService
+@inject IJSRuntime JS
+
+<PageTitle>Управление услугами | CosmetologySalon</PageTitle>
+
+<div class="services-page">
+    <div class="page-header">
+        <div>
+            <h1 class="page-title text-white">Управление услугами</h1>
+            <p class="page-subtitle">Просмотр, создание и управление услугами салона</p>
+        </div>
+        <div class="header-actions">
+            <button class="btn btn-teal" @onclick="OpenCreateModal">
+                <i class="fas fa-plus"></i> Новая услуга
+            </button>
+            <button class="btn btn-outline-secondary" @onclick="LoadServices">
+                <i class="fas fa-sync-alt"></i> Обновить
+            </button>
+        </div>
+    </div>
+
+    <div class="card-dark">
+        <div class="card-header-dark">
+            <div class="search-box">
+                <i class="fas fa-search search-icon"></i>
+                <input type="text" class="form-control search-input"
+                       placeholder="Поиск по названию услуги..."
+                       @bind="searchText" @bind:event="oninput" />
+            </div>
+        </div>
+        <div class="card-body-dark">
+            @if (_loading)
+            {
+                <div class="loading-container">
+                    <div class="spinner"></div>
+                    <p>Загрузка услуг...</p>
+                </div>
+            }
+            else if (_services == null || !_displayServices.Any())
+            {
+                <div class="empty-state">
+                    <div class="empty-icon">💅</div>
+                    <h3>Нет услуг</h3>
+                    <p>Нажмите кнопку "Новая услуга", чтобы создать первую услугу</p>
+                </div>
+            }
+            else
+            {
+                <div class="table-container">
+                    <table class="services-table">
+                        <thead>
+                            <tr>
+                                <th>ID</th>
+                                <th>Название услуги</th>
+                                <th>Цена</th>
+                                <th>Длительность</th>
+                                <th>Статус</th>
+                                <th>Действия</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach (var service in _displayServices)
+                            {
+                                <tr>
+                                    <td><span class="text-white">#@service.ServiceId</span></td>
+                                    <td>
+                                        <div class="service-info">
+                                            <span class="service-icon">@GetServiceIcon(service.ServiceName)</span>
+                                            <span class="service-name">@service.ServiceName</span>
+                                        </div>
+                                    </td>
+                                    <td><span class="service-price">@service.Price.ToString("N0") ₽</span></td>
+                                    <td><span class="text-white">@service.DurationMinutes мин</span></td>
+                                    <td>
+                                        <span class="status-badge @(service.IsActive ? "status-active" : "status-inactive")">
+                                            @(service.IsActive ? "Активна" : "Неактивна")
+                                        </span>
+                                    </td>
+                                    <td>
+                                        <div class="action-buttons">
+                                            <button class="btn-edit" @onclick="() => OpenEditModal(service)" title="Редактировать">✏️</button>
+                                            <button class="btn-toggle" @onclick="() => ToggleServiceStatus(service)" title="@(service.IsActive ? "Деактивировать" : "Активировать")">
+                                                @(service.IsActive ? "🔴" : "🟢")
+                                            </button>
+                                            <button class="btn-delete" @onclick="() => DeleteService(service.ServiceId)" title="Удалить">🗑️</button>
+                                        </div>
+                                    </td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+            }
+        </div>
+    </div>
+</div>
+
+<!-- Модальное окно - тёмная тема -->
+@if (showModal)
+{
+    <div class="modal-overlay" @onclick="CloseModal">
+        <div class="modal-container" @onclick:stopPropagation>
+            <div class="modal-header-custom">
+                <div class="modal-icon">
+                    <i class="fas @(isEditMode ? "fa-edit" : "fa-plus-circle")"></i>
+                </div>
+                <div>
+                    <h3>@(isEditMode ? "Редактирование услуги" : "Новая услуга")</h3>
+                    <p>@(isEditMode ? "Измените данные услуги" : "Заполните информацию об услуге")</p>
+                </div>
+                <button class="modal-close-btn" @onclick="CloseModal">✖</button>
+            </div>
+            <div class="modal-body-custom">
+                @if (!string.IsNullOrEmpty(errorMessage))
+                {
+                    <div class="error-alert">
+                        <i class="fas fa-exclamation-circle me-2"></i> @errorMessage
+                    </div>
+                }
+
+                <div class="form-group-custom">
+                    <label>✨ Название услуги <span class="required">*</span></label>
+                    <input type="text" class="form-control-custom @(nameError ? "is-invalid" : "")"
+                           @bind="_serviceName" @bind:event="oninput"
+                           placeholder="Чистка лица, Массаж, Маникюр..." />
+                    @if (nameError)
+                    {
+                        <div class="invalid-feedback">Название услуги обязательно</div>
+                    }
+                </div>
+
+                <div class="form-row-custom">
+                    <div class="form-group-custom">
+                        <label>💰 Цена <span class="required">*</span></label>
+                        <div class="input-group-custom">
+                            <input type="number" class="form-control-custom @(priceError ? "is-invalid" : "")"
+                                   @bind="_price" @bind:event="oninput"
+                                   placeholder="0" step="100" min="0" />
+                            <span class="input-group-text">₽</span>
+                        </div>
+                        @if (priceError)
+                        {
+                            <div class="invalid-feedback">Цена должна быть больше 0</div>
+                        }
+                    </div>
+
+                    <div class="form-group-custom">
+                        <label>⏰ Длительность <span class="required">*</span></label>
+                        <div class="input-group-custom">
+                            <input type="number" class="form-control-custom @(durationError ? "is-invalid" : "")"
+                                   @bind="_durationMinutes" @bind:event="oninput"
+                                   placeholder="30" step="15" min="5" />
+                            <span class="input-group-text">мин</span>
+                        </div>
+                        @if (durationError)
+                        {
+                            <div class="invalid-feedback">Длительность должна быть больше 0</div>
+                        }
+                    </div>
+                </div>
+
+                <div class="alert-info">
+                    <i class="fas fa-info-circle"></i> Название услуги должно быть уникальным
+                </div>
+            </div>
+            <div class="modal-footer-custom">
+                <button class="btn-cancel-modal" @onclick="CloseModal">Отмена</button>
+                <button class="btn-save" @onclick="SaveService" disabled="@isLoading">
+                    @if (isLoading)
+                    {
+                        <span class="spinner-small"></span>
+                    }
+                    @(isEditMode ? "Сохранить" : "Создать")
+                </button>
+            </div>
+        </div>
+    </div>
+}
+
+<style>
+    .services-page {
+        padding: 20px;
+        max-width: 1400px;
+        margin: 0 auto;
+    }
+
+    .page-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 24px;
+        flex-wrap: wrap;
+        gap: 16px;
+    }
+
+    .page-title {
+        font-size: 28px;
+        font-weight: 600;
+        margin: 0;
+        color: #1a1a2e;
+    }
+
+    .page-subtitle {
+        color: #666;
+        margin: 4px 0 0;
+        font-size: 14px;
+    }
+
+    .header-actions {
+        display: flex;
+        gap: 12px;
+    }
+
+    .btn-teal {
+        background: linear-gradient(135deg, #0d9488 0%, #059669 100%);
+        color: white;
+        border: none;
+        border-radius: 0.75rem;
+        padding: 0.5rem 1rem;
+        font-weight: 500;
+        transition: all 0.2s;
+        cursor: pointer;
+        display: inline-flex;
+        align-items: center;
+        gap: 0.5rem;
+    }
+
+        .btn-teal:hover {
+            background: linear-gradient(135deg, #0f766e 0%, #047857 100%);
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(13, 148, 136, 0.4);
+        }
+
+    .btn-outline-secondary {
+        background: transparent;
+        border: 1px solid #cbd5e1;
+        color: #475569;
+        border-radius: 0.75rem;
+        padding: 0.5rem 1rem;
+        font-weight: 500;
+        transition: all 0.2s;
+        cursor: pointer;
+        display: inline-flex;
+        align-items: center;
+        gap: 0.5rem;
+    }
+
+        .btn-outline-secondary:hover {
+            background: #f1f5f9;
+        }
+
+    .card-dark {
+        background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%);
+        border: 1px solid rgba(20, 184, 166, 0.15);
+        border-radius: 1rem;
+        box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+        overflow: hidden;
+    }
+
+    .card-header-dark {
+        background: rgba(15, 23, 42, 0.8);
+        border-bottom: 1px solid rgba(20, 184, 166, 0.1);
+        padding: 1rem 1.5rem;
+    }
+
+    .card-body-dark {
+        padding: 0;
+    }
+
+    .search-box {
+        position: relative;
+        max-width: 300px;
+    }
+
+    .search-icon {
+        position: absolute;
+        left: 12px;
+        top: 50%;
+        transform: translateY(-50%);
+        color: #64748b;
+        font-size: 0.875rem;
+    }
+
+    .search-input {
+        padding-left: 36px;
+        border-radius: 2rem;
+        border: 1px solid rgba(20, 184, 166, 0.2);
+        background: #0f172a;
+        color: #e2e8f0;
+        width: 100%;
+        font-size: 0.875rem;
+    }
+
+        .search-input:focus {
+            border-color: #14b8a6;
+            box-shadow: 0 0 0 3px rgba(20, 184, 166, 0.15);
+            outline: none;
+            background: #0f172a;
+            color: #e2e8f0;
+        }
+
+        .search-input::placeholder {
+            color: #64748b;
+        }
+
+    .table-container {
+        overflow-x: auto;
+    }
+
+    .services-table {
+        width: 100%;
+        border-collapse: collapse;
+        color: #e2e8f0;
+    }
+
+        .services-table thead th {
+            background: rgba(15, 23, 42, 0.9);
+            padding: 12px 16px;
+            font-weight: 600;
+            font-size: 0.875rem;
+            color: #94a3b8;
+            border-bottom: 2px solid rgba(20, 184, 166, 0.15);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .services-table tbody td {
+            padding: 12px 16px;
+            vertical-align: middle;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+        }
+
+        .services-table tbody tr:hover {
+            background: rgba(20, 184, 166, 0.05);
+        }
+
+    .service-info {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+    }
+
+    .service-icon {
+        font-size: 24px;
+    }
+
+    .service-name {
+        font-weight: 500;
+        color: #f1f5f9;
+    }
+
+    .service-price {
+        font-weight: 600;
+        color: #14b8a6;
+    }
+
+    .text-white {
+        color: #e2e8f0;
+    }
+
+    .status-badge {
+        display: inline-flex;
+        align-items: center;
+        padding: 4px 12px;
+        border-radius: 20px;
+        font-size: 12px;
+        font-weight: 500;
+    }
+
+    .status-active {
+        background: linear-gradient(135deg, rgba(16, 185, 129, 0.2) 0%, rgba(5, 150, 105, 0.2) 100%);
+        color: #34d399;
+        border: 1px solid rgba(16, 185, 129, 0.3);
+    }
+
+    .status-inactive {
+        background: linear-gradient(135deg, rgba(239, 68, 68, 0.2) 0%, rgba(220, 38, 38, 0.2) 100%);
+        color: #f87171;
+        border: 1px solid rgba(239, 68, 68, 0.3);
+    }
+
+    .action-buttons {
+        display: flex;
+        gap: 8px;
+    }
+
+    .btn-edit, .btn-toggle, .btn-delete {
+        width: 32px;
+        height: 32px;
+        border-radius: 8px;
+        border: none;
+        cursor: pointer;
+        font-size: 14px;
+        transition: all 0.2s;
+    }
+
+    .btn-edit {
+        background: #eff6ff;
+        color: #3b82f6;
+    }
+
+        .btn-edit:hover {
+            background: #3b82f6;
+            color: white;
+        }
+
+    .btn-toggle {
+        background: #fef3c7;
+        color: #d97706;
+    }
+
+        .btn-toggle:hover {
+            background: #d97706;
+            color: white;
+        }
+
+    .btn-delete {
+        background: #fee2e2;
+        color: #ef4444;
+    }
+
+        .btn-delete:hover {
+            background: #ef4444;
+            color: white;
+        }
+
+    .loading-container {
+        text-align: center;
+        padding: 60px;
+    }
+
+    .spinner {
+        width: 40px;
+        height: 40px;
+        border: 3px solid #e2e8f0;
+        border-top-color: #0d9488;
+        border-radius: 50%;
+        animation: spin 0.8s linear infinite;
+        margin: 0 auto 16px;
+    }
+
+    .spinner-small {
+        display: inline-block;
+        width: 14px;
+        height: 14px;
+        border: 2px solid white;
+        border-top-color: transparent;
+        border-radius: 50%;
+        animation: spin 0.6s linear infinite;
+        margin-right: 8px;
+    }
+
+    @@keyframes spin {
+        to
+
+    {
+        transform: rotate(360deg);
+    }
+
+    }
+
+    .empty-state {
+        text-align: center;
+        padding: 60px;
+        background: white;
+        border-radius: 12px;
+    }
+
+    .empty-icon {
+        font-size: 48px;
+        margin-bottom: 16px;
+    }
+
+    .empty-state h3 {
+        margin: 0 0 8px;
+        color: #1e293b;
+    }
+
+    .empty-state p {
+        color: #666;
+    }
+
+    /* ===== МОДАЛЬНОЕ ОКНО - ТЁМНАЯ ТЕМА ===== */
+    .modal-overlay {
+        position: fixed;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background: rgba(0, 0, 0, 0.75);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        z-index: 1000;
+    }
+
+    .modal-container {
+        background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%);
+        border: 1px solid rgba(20, 184, 166, 0.3);
+        border-radius: 20px;
+        width: 90%;
+        max-width: 500px;
+        max-height: 90vh;
+        overflow-y: auto;
+        box-shadow: 0 25px 50px rgba(0, 0, 0, 0.5);
+        animation: modalFadeIn 0.2s ease;
+    }
+
+    @@keyframes modalFadeIn {
+        from
+
+    {
+        opacity: 0;
+        transform: scale(0.95);
+    }
+
+    to {
+        opacity: 1;
+        transform: scale(1);
+    }
+
+    }
+
+    .modal-header-custom {
+        display: flex;
+        align-items: center;
+        gap: 15px;
+        padding: 20px 24px;
+        border-bottom: 1px solid rgba(20, 184, 166, 0.15);
+        position: relative;
+    }
+
+    .modal-icon {
+        width: 48px;
+        height: 48px;
+        background: linear-gradient(135deg, #0d9488 0%, #059669 100%);
+        border-radius: 14px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: white;
+        font-size: 1.35rem;
+    }
+
+    .modal-header-custom h3 {
+        margin: 0;
+        font-size: 18px;
+        font-weight: 600;
+        color: #f1f5f9;
+    }
+
+    .modal-header-custom p {
+        margin: 4px 0 0;
+        font-size: 12px;
+        color: #94a3b8;
+    }
+
+    .modal-close-btn {
+        position: absolute;
+        right: 20px;
+        top: 20px;
+        background: rgba(255, 255, 255, 0.05);
+        border: none;
+        width: 32px;
+        height: 32px;
+        border-radius: 8px;
+        font-size: 18px;
+        cursor: pointer;
+        color: #94a3b8;
+        transition: all 0.2s;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+
+        .modal-close-btn:hover {
+            background: rgba(239, 68, 68, 0.2);
+            color: #f87171;
+        }
+
+    .modal-body-custom {
+        padding: 24px;
+    }
+
+    .modal-footer-custom {
+        padding: 16px 24px;
+        border-top: 1px solid rgba(20, 184, 166, 0.15);
+        display: flex;
+        justify-content: flex-end;
+        gap: 12px;
+    }
+
+    /* Form Dark Theme */
+    .form-group-custom {
+        margin-bottom: 20px;
+    }
+
+        .form-group-custom label {
+            display: block;
+            font-weight: 500;
+            font-size: 14px;
+            margin-bottom: 8px;
+            color: #e2e8f0;
+        }
+
+    .required {
+        color: #f87171;
+    }
+
+    .form-control-custom {
+        width: 100%;
+        padding: 10px 14px;
+        border: 1px solid rgba(20, 184, 166, 0.25);
+        border-radius: 10px;
+        font-size: 14px;
+        background: #0f172a;
+        color: #e2e8f0;
+        transition: all 0.2s;
+    }
+
+        .form-control-custom:focus {
+            outline: none;
+            border-color: #14b8a6;
+            box-shadow: 0 0 0 3px rgba(20, 184, 166, 0.2);
+        }
+
+        .form-control-custom.is-invalid {
+            border-color: #f87171;
+        }
+
+        .form-control-custom::placeholder {
+            color: #475569;
+        }
+
+    select.form-control-custom {
+        cursor: pointer;
+    }
+
+        select.form-control-custom option {
+            background: #1e293b;
+            color: #e2e8f0;
+        }
+
+    .form-row-custom {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 16px;
+    }
+
+    .input-group-custom {
+        display: flex;
+        align-items: stretch;
+    }
+
+        .input-group-custom .form-control-custom {
+            flex: 1;
+            border-radius: 10px 0 0 10px;
+        }
+
+    .input-group-text {
+        background: #1e293b;
+        border: 1px solid rgba(20, 184, 166, 0.25);
+        border-left: none;
+        padding: 10px 14px;
+        border-radius: 0 10px 10px 0;
+        font-size: 14px;
+        color: #14b8a6;
+    }
+
+    .invalid-feedback {
+        color: #f87171;
+        font-size: 12px;
+        margin-top: 6px;
+        display: block;
+    }
+
+    .alert-info {
+        background: rgba(20, 184, 166, 0.1);
+        border: 1px solid rgba(20, 184, 166, 0.2);
+        color: #14b8a6;
+        padding: 12px;
+        border-radius: 10px;
+        font-size: 13px;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        margin-top: 8px;
+    }
+
+    .error-alert {
+        background: rgba(239, 68, 68, 0.1);
+        border: 1px solid rgba(239, 68, 68, 0.2);
+        color: #f87171;
+        padding: 12px;
+        border-radius: 10px;
+        margin-bottom: 20px;
+        font-size: 14px;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+    }
+
+    .btn-cancel-modal {
+        padding: 10px 24px;
+        border-radius: 10px;
+        border: 1px solid rgba(20, 184, 166, 0.3);
+        background: #1e293b;
+        color: #e2e8f0;
+        cursor: pointer;
+        transition: all 0.2s;
+        font-size: 14px;
+        font-weight: 500;
+    }
+
+        .btn-cancel-modal:hover {
+            background: #334155;
+            border-color: #14b8a6;
+        }
+
+    .btn-save {
+        padding: 10px 28px;
+        border-radius: 10px;
+        border: none;
+        background: linear-gradient(135deg, #0d9488, #059669);
+        color: white;
+        cursor: pointer;
+        transition: all 0.2s;
+        font-size: 14px;
+        font-weight: 500;
+    }
+
+        .btn-save:hover:not(:disabled) {
+            transform: translateY(-1px);
+            box-shadow: 0 6px 20px rgba(13, 148, 136, 0.4);
+        }
+
+        .btn-save:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+        }
+
+    @@media (max-width: 768px) {
+        .services-page
+
+    {
+        padding: 12px;
+    }
+
+    .page-header {
+        flex-direction: column;
+        align-items: stretch;
+    }
+
+    .header-actions {
+        justify-content: stretch;
+    }
+
+        .header-actions button {
+            flex: 1;
+            text-align: center;
+        }
+
+    .search-box {
+        max-width: 100%;
+    }
+
+    .form-row-custom {
+        grid-template-columns: 1fr;
+        gap: 0;
+    }
+
+    .services-table {
+        font-size: 12px;
+    }
+
+    .action-buttons {
+        flex-direction: column;
+    }
+
+    .modal-container {
+        width: 95%;
+        margin: 16px;
+    }
+
+    }
+</style>
+
+@code {
+    private List<ServiceDto> _services = new();
+    private List<ServiceDto> _displayServices = new();
+    private string searchText = string.Empty;
+    private bool _loading = true;
+    private bool showModal = false;
+    private bool isEditMode = false;
+    private bool isLoading = false;
+    private string errorMessage = string.Empty;
+
+    private string _serviceName = string.Empty;
+    private int _price = 0;
+    private int _durationMinutes = 30;
+    private int? _editingServiceId = null;
+
+    private bool nameError = false;
+    private bool priceError = false;
+    private bool durationError = false;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadServices();
+    }
+
+    private async Task LoadServices()
+    {
+        _loading = true;
+        try
+        {
+            var servicesEnumerable = await ServiceService.GetAllServicesAsync();
+            _services = servicesEnumerable.ToList();
+            FilterServices();
+        }
+        catch (Exception ex)
+        {
+            errorMessage = $"Ошибка загрузки услуг: {ex.Message}";
+        }
+        finally
+        {
+            _loading = false;
+            StateHasChanged();
+        }
+    }
+
+    private void FilterServices()
+    {
+        if (string.IsNullOrWhiteSpace(searchText))
+        {
+            _displayServices = _services.ToList();
+        }
+        else
+        {
+            _displayServices = _services
+                .Where(s => s.ServiceName != null && s.ServiceName.Contains(searchText, StringComparison.OrdinalIgnoreCase))
+                .ToList();
+        }
+        StateHasChanged();
+    }
+
+    private string GetServiceIcon(string? serviceName)
+    {
+        if (string.IsNullOrEmpty(serviceName)) return "💅";
+        if (serviceName.Contains("Лицо")) return "💆‍♀️";
+        if (serviceName.Contains("Массаж")) return "💆‍♂️";
+        if (serviceName.Contains("Маникюр")) return "💅";
+        if (serviceName.Contains("Педикюр")) return "🦶";
+        if (serviceName.Contains("Волосы")) return "💇‍♀️";
+        return "✨";
+    }
+
+    private void OpenCreateModal()
+    {
+        isEditMode = false;
+        _editingServiceId = null;
+        _serviceName = string.Empty;
+        _price = 0;
+        _durationMinutes = 30;
+        errorMessage = string.Empty;
+        nameError = false;
+        priceError = false;
+        durationError = false;
+        showModal = true;
+        StateHasChanged();
+    }
+
+    private void OpenEditModal(ServiceDto service)
+    {
+        isEditMode = true;
+        _editingServiceId = service.ServiceId;
+        _serviceName = service.ServiceName ?? string.Empty;
+        _price = service.Price;
+        _durationMinutes = service.DurationMinutes;
+        errorMessage = string.Empty;
+        nameError = false;
+        priceError = false;
+        durationError = false;
+        showModal = true;
+        StateHasChanged();
+    }
+
+    private bool ValidateForm()
+    {
+        bool isValid = true;
+
+        if (string.IsNullOrWhiteSpace(_serviceName))
+        {
+            nameError = true;
+            isValid = false;
+        }
+        else
+        {
+            nameError = false;
+        }
+
+        if (_price <= 0)
+        {
+            priceError = true;
+            isValid = false;
+        }
+        else
+        {
+            priceError = false;
+        }
+
+        if (_durationMinutes <= 0)
+        {
+            durationError = true;
+            isValid = false;
+        }
+        else
+        {
+            durationError = false;
+        }
+
+        return isValid;
+    }
+
+    private async Task SaveService()
+    {
+        if (!ValidateForm())
+        {
+            StateHasChanged();
+            return;
+        }
+
+        isLoading = true;
+        errorMessage = string.Empty;
+        StateHasChanged();
+
+        try
+        {
+            if (isEditMode && _editingServiceId.HasValue)
+            {
+                var updateDto = new UpdateServiceDto
+                {
+                    ServiceId = _editingServiceId.Value,
+                    ServiceName = _serviceName.Trim(),
+                    Price = _price,
+                    DurationMinutes = _durationMinutes,
+                    IsActive = true
+                };
+                await ServiceService.UpdateServiceAsync(updateDto);
+                await JS.InvokeVoidAsync("alert", "Услуга успешно обновлена!");
+            }
+            else
+            {
+                var createDto = new CreateServiceDto
+                {
+                    ServiceName = _serviceName.Trim(),
+                    Price = _price,
+                    DurationMinutes = _durationMinutes
+                };
+                await ServiceService.AddServiceAsync(createDto);
+                await JS.InvokeVoidAsync("alert", "Услуга успешно создана!");
+            }
+
+            await LoadServices();
+            CloseModal();
+        }
+        catch (ArgumentException ex)
+        {
+            errorMessage = $"Ошибка валидации: {ex.Message}";
+        }
+        catch (InvalidOperationException ex)
+        {
+            errorMessage = ex.Message;
+        }
+        catch (Exception ex)
+        {
+            errorMessage = $"Ошибка: {ex.Message}";
+        }
+        finally
+        {
+            isLoading = false;
+            StateHasChanged();
+        }
+    }
+
+    private async Task ToggleServiceStatus(ServiceDto service)
+    {
+        try
+        {
+            if (service.IsActive)
+            {
+                await ServiceService.DeactivateServiceAsync(service.ServiceId);
+                await JS.InvokeVoidAsync("alert", "Услуга деактивирована");
+            }
+            else
+            {
+                await ServiceService.ActivateServiceAsync(service.ServiceId);
+                await JS.InvokeVoidAsync("alert", "Услуга активирована");
+            }
+            await LoadServices();
+        }
+        catch (Exception ex)
+        {
+            await JS.InvokeVoidAsync("alert", $"Ошибка: {ex.Message}");
+        }
+    }
+
+    private async Task DeleteService(int id)
+    {
+        var confirmed = await JS.InvokeAsync<bool>("confirm", "Вы уверены, что хотите удалить услугу? Это действие может быть невозможно отменить, если на услугу есть записи.");
+        if (!confirmed) return;
+
+        try
+        {
+            await ServiceService.RemoveServiceAsync(id);
+            await LoadServices();
+            await JS.InvokeVoidAsync("alert", "Услуга успешно удалена");
+        }
+        catch (InvalidOperationException ex)
+        {
+            await JS.InvokeVoidAsync("alert", ex.Message);
+        }
+        catch (Exception ex)
+        {
+            await JS.InvokeVoidAsync("alert", $"Ошибка: {ex.Message}");
+        }
+    }
+
+    private void CloseModal()
+    {
+        showModal = false;
+        isEditMode = false;
+        _editingServiceId = null;
+        errorMessage = string.Empty;
+        StateHasChanged();
+    }
+}

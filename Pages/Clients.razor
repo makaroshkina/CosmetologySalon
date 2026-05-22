@@ -1,0 +1,1089 @@
+﻿@page "/clients"
+@using CosmetologySalon.Models
+@using CosmetologySalon.DTOs
+@using CosmetologySalon.Services.Interfaces
+@using Microsoft.EntityFrameworkCore
+@inject CosmetologySalon.Data.SalonAppDbContext Context
+@inject IClient ClientService
+@inject IJSRuntime JS
+@namespace CosmetologySalon.Pages
+
+<PageTitle>Управление клиентами | CosmetologySalon</PageTitle>
+
+<div class="clients-page">
+    <div class="page-header">
+        <div>
+            <h1 class="page-title text-white">Управление клиентами</h1>
+            <p class="page-subtitle">Добавление, редактирование и управление клиентами салона</p>
+        </div>
+        <div class="header-actions">
+            <button class="btn btn-teal" @onclick="ShowCreateModal">
+                <i class="fas fa-plus"></i> Новый клиент
+            </button>
+            <button class="btn btn-outline-secondary" @onclick="LoadClients">
+                <i class="fas fa-sync-alt"></i> Обновить
+            </button>
+        </div>
+    </div>
+
+    <div class="card-dark">
+        <div class="card-header-dark">
+            <div class="search-box">
+                <i class="fas fa-search search-icon"></i>
+                <input type="text" class="form-control search-input"
+                       placeholder="Поиск по имени, телефону или email..."
+                       @bind="searchText" @bind:event="oninput" />
+            </div>
+        </div>
+        <div class="card-body-dark">
+            @if (_clients == null)
+            {
+                <div class="loading-container">
+                    <div class="spinner"></div>
+                    <p>Загрузка клиентов...</p>
+                </div>
+            }
+            else if (!_displayClients.Any())
+            {
+                <div class="empty-state">
+                    <div class="empty-icon">👥</div>
+                    <h3>Нет клиентов</h3>
+                    <p>Нажмите кнопку "Новый клиент", чтобы добавить первого клиента</p>
+                </div>
+            }
+            else
+            {
+                <div class="table-container">
+                    <table class="clients-table">
+                        <thead>
+                            <tr>
+                                <th>ID</th>
+                                <th>ФИО</th>
+                                <th>Телефон</th>
+                                <th>Email</th>
+                                <th>Статус</th>
+                                <th>Записей</th>
+                                <th>Действия</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach (var client in _displayClients)
+                            {
+                                <tr>
+                                    <td>#@client.ClientId</td>
+                                    <td>
+                                        <div class="client-info">
+                                            <div class="client-avatar">
+                                                <i class="fas fa-user"></i>
+                                            </div>
+                                            <div class="client-details">
+                                                <span class="client-name">@client.ClientFullName</span>
+                                            </div>
+                                        </div>
+                                    </td>
+                                    <td>
+                                        <a href="tel:@client.ClientPhone" class="contact-link">
+                                            <i class="fas fa-phone-alt me-1"></i> @client.ClientPhone
+                                        </a>
+                                    </td>
+                                    <td>
+                                        @if (!string.IsNullOrEmpty(client.ClientEmail))
+                                        {
+                                            <a href="mailto:@client.ClientEmail" class="contact-link">
+                                                <i class="fas fa-envelope me-1"></i> @client.ClientEmail
+                                            </a>
+                                        }
+                                        else
+                                        {
+                                            <span class="text-muted">—</span>
+                                        }
+                                    </td>
+                                    <td>
+                                        @if (client.IsActive)
+                                        {
+                                            <span class="status-badge status-active">
+                                                <i class="fas fa-circle me-1" style="font-size: 8px;"></i> Активен
+                                            </span>
+                                        }
+                                        else
+                                        {
+                                            <span class="status-badge status-inactive">
+                                                <i class="fas fa-circle me-1" style="font-size: 8px;"></i> Неактивен
+                                            </span>
+                                        }
+                                    </td>
+                                    <td>
+                                        <span class="appointment-count">
+                                            @client.AppointmentsCount
+                                        </span>
+                                    </td>
+                                    <td>
+                                        <div class="action-buttons">
+                                            <button class="btn-edit" @onclick="() => ShowEditModal(client)" title="Редактировать">✏️</button>
+                                            <button class="btn-toggle" @onclick="() => ToggleClientStatus(client)" title="@(client.IsActive ? "Деактивировать" : "Активировать")">
+                                                @(client.IsActive ? "🔴" : "🟢")
+                                            </button>
+                                            <button class="btn-delete" @onclick="() => DeleteClient(client.ClientId)" title="Удалить">🗑️</button>
+                                        </div>
+                                    </td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+            }
+        </div>
+    </div>
+</div>
+
+<!-- Модальное окно - тёмная тема -->
+@if (showModal)
+{
+    <div class="modal-overlay" @onclick="CloseModal">
+        <div class="modal-container" @onclick:stopPropagation>
+            <div class="modal-header-custom">
+                <div class="modal-icon">
+                    <i class="fas @(isEditMode ? "fa-user-edit" : "fa-user-plus")"></i>
+                </div>
+                <div>
+                    <h3>@(isEditMode ? "Редактирование клиента" : "Новый клиент")</h3>
+                    <p>@(isEditMode ? "Измените данные клиента" : "Заполните информацию о клиенте")</p>
+                </div>
+                <button class="modal-close-btn" @onclick="CloseModal">✖</button>
+            </div>
+            <div class="modal-body-custom">
+                @if (!string.IsNullOrEmpty(errorMessage))
+                {
+                    <div class="error-alert">
+                        <i class="fas fa-exclamation-circle me-2"></i> @errorMessage
+                    </div>
+                }
+
+                <div class="form-group-custom">
+                    <label>👤 ФИО клиента <span class="required">*</span></label>
+                    <input type="text" class="form-control-custom @(nameError ? "is-invalid" : "")"
+                           @bind="_clientFullName" @bind:event="oninput"
+                           placeholder="Иванова Анна Сергеевна" />
+                    @if (nameError)
+                    {
+                        <div class="invalid-feedback">ФИО обязательно для заполнения</div>
+                    }
+                </div>
+
+                <div class="form-group-custom">
+                    <label>📞 Телефон <span class="required">*</span></label>
+                    <div class="input-group-custom">
+                        <span class="input-group-text">+7</span>
+                        <input type="tel" class="form-control-custom @(phoneError ? "is-invalid" : "")"
+                               @bind="_clientPhone" @bind:event="oninput"
+                               placeholder="9991234567" maxlength="10" />
+                    </div>
+                    @if (phoneError)
+                    {
+                        <div class="invalid-feedback">Телефон обязателен (10 цифр после +7)</div>
+                    }
+                    <small class="form-text text-muted">Формат: 9991234567 (без +7)</small>
+                </div>
+
+                <div class="form-group-custom">
+                    <label>📧 Email</label>
+                    <input type="email" class="form-control-custom @(emailError ? "is-invalid" : "")"
+                           @bind="_clientEmail" @bind:event="oninput"
+                           placeholder="client@example.com" />
+                    @if (emailError)
+                    {
+                        <div class="invalid-feedback">Введите корректный email</div>
+                    }
+                    <small class="form-text text-muted">Необязательно, но рекомендуется</small>
+                </div>
+            </div>
+            <div class="modal-footer-custom">
+                <button class="btn-cancel-modal" @onclick="CloseModal">Отмена</button>
+                <button class="btn-save" @onclick="SaveClient" disabled="@isLoading">
+                    @if (isLoading)
+                    {
+                        <span class="spinner-small"></span>
+                    }
+                    @(isEditMode ? "Сохранить изменения" : "Добавить клиента")
+                </button>
+            </div>
+        </div>
+    </div>
+}
+
+<style>
+    .clients-page {
+        padding: 20px;
+        max-width: 1400px;
+        margin: 0 auto;
+    }
+
+    .page-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 24px;
+        flex-wrap: wrap;
+        gap: 16px;
+    }
+
+    .page-title {
+        font-size: 28px;
+        font-weight: 600;
+        margin: 0;
+        color: #1a1a2e;
+    }
+
+    .page-subtitle {
+        color: #666;
+        margin: 4px 0 0;
+        font-size: 14px;
+    }
+
+    .header-actions {
+        display: flex;
+        gap: 12px;
+    }
+
+    .btn-teal {
+        background: linear-gradient(135deg, #0d9488 0%, #059669 100%);
+        color: white;
+        border: none;
+        border-radius: 0.75rem;
+        padding: 0.5rem 1rem;
+        font-weight: 500;
+        transition: all 0.2s;
+        cursor: pointer;
+        display: inline-flex;
+        align-items: center;
+        gap: 0.5rem;
+    }
+
+        .btn-teal:hover {
+            background: linear-gradient(135deg, #0f766e 0%, #047857 100%);
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(13, 148, 136, 0.4);
+        }
+
+    .btn-outline-secondary {
+        background: transparent;
+        border: 1px solid #cbd5e1;
+        color: #475569;
+        border-radius: 0.75rem;
+        padding: 0.5rem 1rem;
+        font-weight: 500;
+        transition: all 0.2s;
+        cursor: pointer;
+        display: inline-flex;
+        align-items: center;
+        gap: 0.5rem;
+    }
+
+        .btn-outline-secondary:hover {
+            background: #f1f5f9;
+        }
+
+    /* Card Dark */
+    .card-dark {
+        background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%);
+        border: 1px solid rgba(20, 184, 166, 0.15);
+        border-radius: 1rem;
+        box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+        overflow: hidden;
+    }
+
+    .card-header-dark {
+        background: rgba(15, 23, 42, 0.8);
+        border-bottom: 1px solid rgba(20, 184, 166, 0.1);
+        padding: 1rem 1.5rem;
+    }
+
+    .card-body-dark {
+        padding: 0;
+    }
+
+    /* Search Box */
+    .search-box {
+        position: relative;
+        max-width: 300px;
+    }
+
+    .search-icon {
+        position: absolute;
+        left: 12px;
+        top: 50%;
+        transform: translateY(-50%);
+        color: #64748b;
+        font-size: 0.875rem;
+    }
+
+    .search-input {
+        padding-left: 36px;
+        border-radius: 2rem;
+        border: 1px solid rgba(20, 184, 166, 0.2);
+        background: #0f172a;
+        color: #e2e8f0;
+        width: 100%;
+        font-size: 0.875rem;
+    }
+
+        .search-input:focus {
+            border-color: #14b8a6;
+            box-shadow: 0 0 0 3px rgba(20, 184, 166, 0.15);
+            outline: none;
+            background: #0f172a;
+            color: #e2e8f0;
+        }
+
+        .search-input::placeholder {
+            color: #64748b;
+        }
+
+    /* Table */
+    .table-container {
+        overflow-x: auto;
+    }
+
+    .clients-table {
+        width: 100%;
+        border-collapse: collapse;
+        color: #e2e8f0;
+    }
+
+        .clients-table thead th {
+            background: rgba(15, 23, 42, 0.9);
+            padding: 12px 16px;
+            font-weight: 600;
+            font-size: 0.875rem;
+            color: #94a3b8;
+            border-bottom: 2px solid rgba(20, 184, 166, 0.15);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .clients-table tbody td {
+            padding: 12px 16px;
+            vertical-align: middle;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+        }
+
+        .clients-table tbody tr:hover {
+            background: rgba(20, 184, 166, 0.05);
+        }
+
+    /* Client Info */
+    .client-info {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+    }
+
+    .client-avatar {
+        width: 36px;
+        height: 36px;
+        background: linear-gradient(135deg, #0d9488 0%, #059669 100%);
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: white;
+        font-size: 0.875rem;
+    }
+
+    .client-name {
+        font-weight: 600;
+        color: #f1f5f9;
+    }
+
+    /* Contact Links */
+    .contact-link {
+        color: #94a3b8;
+        text-decoration: none;
+        font-size: 0.875rem;
+        transition: color 0.2s;
+    }
+
+        .contact-link:hover {
+            color: #14b8a6;
+        }
+
+    /* Status Badges */
+    .status-badge {
+        display: inline-flex;
+        align-items: center;
+        padding: 4px 12px;
+        border-radius: 20px;
+        font-size: 12px;
+        font-weight: 500;
+    }
+
+    .status-active {
+        background: linear-gradient(135deg, rgba(16, 185, 129, 0.2) 0%, rgba(5, 150, 105, 0.2) 100%);
+        color: #34d399;
+        border: 1px solid rgba(16, 185, 129, 0.3);
+    }
+
+    .status-inactive {
+        background: linear-gradient(135deg, rgba(239, 68, 68, 0.2) 0%, rgba(220, 38, 38, 0.2) 100%);
+        color: #f87171;
+        border: 1px solid rgba(239, 68, 68, 0.3);
+    }
+
+    .appointment-count {
+        background: rgba(20, 184, 166, 0.15);
+        color: #14b8a6;
+        padding: 4px 10px;
+        border-radius: 8px;
+        font-size: 0.875rem;
+        font-weight: 600;
+        display: inline-block;
+        text-align: center;
+        min-width: 36px;
+        border: 1px solid rgba(20, 184, 166, 0.2);
+    }
+
+    /* Action Buttons */
+    .action-buttons {
+        display: flex;
+        gap: 8px;
+    }
+
+    .btn-edit, .btn-toggle, .btn-delete {
+        width: 32px;
+        height: 32px;
+        border-radius: 8px;
+        border: none;
+        cursor: pointer;
+        font-size: 14px;
+        transition: all 0.2s;
+    }
+
+    .btn-edit {
+        background: #eff6ff;
+        color: #3b82f6;
+    }
+
+        .btn-edit:hover {
+            background: #3b82f6;
+            color: white;
+        }
+
+    .btn-toggle {
+        background: #fef3c7;
+        color: #d97706;
+    }
+
+        .btn-toggle:hover {
+            background: #d97706;
+            color: white;
+        }
+
+    .btn-delete {
+        background: #fee2e2;
+        color: #ef4444;
+    }
+
+        .btn-delete:hover {
+            background: #ef4444;
+            color: white;
+        }
+
+    /* Loading & Empty States */
+    .loading-container {
+        text-align: center;
+        padding: 60px;
+    }
+
+    .spinner {
+        width: 40px;
+        height: 40px;
+        border: 3px solid #e2e8f0;
+        border-top-color: #0d9488;
+        border-radius: 50%;
+        animation: spin 0.8s linear infinite;
+        margin: 0 auto 16px;
+    }
+
+    .spinner-small {
+        display: inline-block;
+        width: 14px;
+        height: 14px;
+        border: 2px solid white;
+        border-top-color: transparent;
+        border-radius: 50%;
+        animation: spin 0.6s linear infinite;
+        margin-right: 8px;
+    }
+
+    @@keyframes spin {
+        to
+
+    {
+        transform: rotate(360deg);
+    }
+
+    }
+
+    .empty-state {
+        text-align: center;
+        padding: 60px;
+        background: white;
+        border-radius: 12px;
+    }
+
+    .empty-icon {
+        font-size: 48px;
+        margin-bottom: 16px;
+    }
+
+    .empty-state h3 {
+        margin: 0 0 8px;
+        color: #1e293b;
+    }
+
+    .empty-state p {
+        color: #666;
+    }
+
+    .text-muted {
+        color: #64748b;
+    }
+
+    /* ===== МОДАЛЬНОЕ ОКНО - ТЁМНАЯ ТЕМА ===== */
+    .modal-overlay {
+        position: fixed;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background: rgba(0, 0, 0, 0.75);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        z-index: 1000;
+    }
+
+    .modal-container {
+        background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%);
+        border: 1px solid rgba(20, 184, 166, 0.3);
+        border-radius: 20px;
+        width: 90%;
+        max-width: 500px;
+        max-height: 90vh;
+        overflow-y: auto;
+        box-shadow: 0 25px 50px rgba(0, 0, 0, 0.5);
+        animation: modalFadeIn 0.2s ease;
+    }
+
+    @@keyframes modalFadeIn {
+        from
+
+    {
+        opacity: 0;
+        transform: scale(0.95);
+    }
+
+    to {
+        opacity: 1;
+        transform: scale(1);
+    }
+
+    }
+
+    .modal-header-custom {
+        display: flex;
+        align-items: center;
+        gap: 15px;
+        padding: 20px 24px;
+        border-bottom: 1px solid rgba(20, 184, 166, 0.15);
+        position: relative;
+    }
+
+    .modal-icon {
+        width: 48px;
+        height: 48px;
+        background: linear-gradient(135deg, #0d9488 0%, #059669 100%);
+        border-radius: 14px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: white;
+        font-size: 1.35rem;
+    }
+
+    .modal-header-custom h3 {
+        margin: 0;
+        font-size: 18px;
+        font-weight: 600;
+        color: #f1f5f9;
+    }
+
+    .modal-header-custom p {
+        margin: 4px 0 0;
+        font-size: 12px;
+        color: #94a3b8;
+    }
+
+    .modal-close-btn {
+        position: absolute;
+        right: 20px;
+        top: 20px;
+        background: rgba(255, 255, 255, 0.05);
+        border: none;
+        width: 32px;
+        height: 32px;
+        border-radius: 8px;
+        font-size: 18px;
+        cursor: pointer;
+        color: #94a3b8;
+        transition: all 0.2s;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+
+        .modal-close-btn:hover {
+            background: rgba(239, 68, 68, 0.2);
+            color: #f87171;
+        }
+
+    .modal-body-custom {
+        padding: 24px;
+    }
+
+    .modal-footer-custom {
+        padding: 16px 24px;
+        border-top: 1px solid rgba(20, 184, 166, 0.15);
+        display: flex;
+        justify-content: flex-end;
+        gap: 12px;
+    }
+
+    /* Form Dark Theme */
+    .form-group-custom {
+        margin-bottom: 20px;
+    }
+
+        .form-group-custom label {
+            display: block;
+            font-weight: 500;
+            font-size: 14px;
+            margin-bottom: 8px;
+            color: #e2e8f0;
+        }
+
+    .required {
+        color: #f87171;
+    }
+
+    .form-control-custom {
+        width: 100%;
+        padding: 10px 14px;
+        border: 1px solid rgba(20, 184, 166, 0.25);
+        border-radius: 10px;
+        font-size: 14px;
+        background: #0f172a;
+        color: #e2e8f0;
+        transition: all 0.2s;
+    }
+
+        .form-control-custom:focus {
+            outline: none;
+            border-color: #14b8a6;
+            box-shadow: 0 0 0 3px rgba(20, 184, 166, 0.2);
+        }
+
+        .form-control-custom.is-invalid {
+            border-color: #f87171;
+        }
+
+        .form-control-custom::placeholder {
+            color: #475569;
+        }
+
+    .input-group-custom {
+        display: flex;
+        align-items: stretch;
+    }
+
+        .input-group-custom .form-control-custom {
+            flex: 1;
+            border-radius: 10px 0 0 10px;
+        }
+
+    .input-group-text {
+        background: #1e293b;
+        border: 1px solid rgba(20, 184, 166, 0.25);
+        border-left: none;
+        padding: 10px 14px;
+        border-radius: 0 10px 10px 0;
+        font-size: 14px;
+        color: #14b8a6;
+    }
+
+    .invalid-feedback {
+        color: #f87171;
+        font-size: 12px;
+        margin-top: 6px;
+        display: block;
+    }
+
+    .form-text {
+        font-size: 11px;
+        margin-top: 4px;
+        display: block;
+    }
+
+    .text-muted {
+        color: #64748b;
+    }
+
+    .error-alert {
+        background: rgba(239, 68, 68, 0.1);
+        border: 1px solid rgba(239, 68, 68, 0.2);
+        color: #f87171;
+        padding: 12px;
+        border-radius: 10px;
+        margin-bottom: 20px;
+        font-size: 14px;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+    }
+
+    .btn-cancel-modal {
+        padding: 10px 24px;
+        border-radius: 10px;
+        border: 1px solid rgba(20, 184, 166, 0.3);
+        background: #1e293b;
+        color: #e2e8f0;
+        cursor: pointer;
+        transition: all 0.2s;
+        font-size: 14px;
+        font-weight: 500;
+    }
+
+        .btn-cancel-modal:hover {
+            background: #334155;
+            border-color: #14b8a6;
+        }
+
+    .btn-save {
+        padding: 10px 28px;
+        border-radius: 10px;
+        border: none;
+        background: linear-gradient(135deg, #0d9488, #059669);
+        color: white;
+        cursor: pointer;
+        transition: all 0.2s;
+        font-size: 14px;
+        font-weight: 500;
+    }
+
+        .btn-save:hover:not(:disabled) {
+            transform: translateY(-1px);
+            box-shadow: 0 6px 20px rgba(13, 148, 136, 0.4);
+        }
+
+        .btn-save:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+        }
+
+    @@media (max-width: 768px) {
+        .clients-page
+
+    {
+        padding: 12px;
+    }
+
+    .page-header {
+        flex-direction: column;
+        align-items: stretch;
+    }
+
+    .header-actions {
+        justify-content: stretch;
+    }
+
+        .header-actions button {
+            flex: 1;
+            text-align: center;
+        }
+
+    .search-box {
+        max-width: 100%;
+    }
+
+    .clients-table {
+        font-size: 12px;
+    }
+
+    .action-buttons {
+        flex-direction: column;
+    }
+
+    .modal-container {
+        width: 95%;
+        margin: 16px;
+    }
+
+    }
+</style>
+
+@code {
+    private List<ClientDto> _clients = new();
+    private List<ClientDto> _displayClients = new();
+    private string searchText = string.Empty;
+
+    private bool showModal = false;
+    private bool isEditMode = false;
+    private int? editingClientId = null;
+    private bool isLoading = false;
+    private string errorMessage = string.Empty;
+
+    private string _clientFullName = string.Empty;
+    private string _clientPhone = string.Empty;
+    private string? _clientEmail = string.Empty;
+
+    private bool nameError = false;
+    private bool phoneError = false;
+    private bool emailError = false;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadClients();
+    }
+
+    private async Task LoadClients()
+    {
+        try
+        {
+            _clients = await ClientService.GetAllClientsAsync();
+            FilterClients();
+        }
+        catch (Exception ex)
+        {
+            errorMessage = $"Ошибка загрузки клиентов: {ex.Message}";
+        }
+        StateHasChanged();
+    }
+
+    private void FilterClients()
+    {
+        if (string.IsNullOrWhiteSpace(searchText))
+        {
+            _displayClients = _clients.ToList();
+        }
+        else
+        {
+            _displayClients = _clients
+                .Where(c => c.ClientFullName.Contains(searchText, StringComparison.OrdinalIgnoreCase) ||
+                           c.ClientPhone.Contains(searchText, StringComparison.OrdinalIgnoreCase) ||
+                           (c.ClientEmail != null && c.ClientEmail.Contains(searchText, StringComparison.OrdinalIgnoreCase)))
+                .ToList();
+        }
+        StateHasChanged();
+    }
+
+    private void ShowCreateModal()
+    {
+        isEditMode = false;
+        editingClientId = null;
+        ResetForm();
+        showModal = true;
+        StateHasChanged();
+    }
+
+    private void ShowEditModal(ClientDto client)
+    {
+        isEditMode = true;
+        editingClientId = client.ClientId;
+        _clientFullName = client.ClientFullName;
+        _clientPhone = client.ClientPhone;
+        _clientEmail = client.ClientEmail;
+        errorMessage = string.Empty;
+        nameError = false;
+        phoneError = false;
+        emailError = false;
+        showModal = true;
+        StateHasChanged();
+    }
+
+    private void ResetForm()
+    {
+        _clientFullName = string.Empty;
+        _clientPhone = string.Empty;
+        _clientEmail = string.Empty;
+        errorMessage = string.Empty;
+        nameError = false;
+        phoneError = false;
+        emailError = false;
+    }
+
+    private bool ValidateForm()
+    {
+        bool isValid = true;
+
+        if (string.IsNullOrWhiteSpace(_clientFullName))
+        {
+            nameError = true;
+            isValid = false;
+        }
+        else
+        {
+            nameError = false;
+        }
+
+        if (string.IsNullOrWhiteSpace(_clientPhone))
+        {
+            phoneError = true;
+            isValid = false;
+        }
+        else
+        {
+            phoneError = false;
+        }
+
+        if (!string.IsNullOrEmpty(_clientEmail) && !_clientEmail.Contains("@"))
+        {
+            emailError = true;
+            isValid = false;
+        }
+        else
+        {
+            emailError = false;
+        }
+
+        return isValid;
+    }
+
+    private async Task SaveClient()
+    {
+        if (!ValidateForm())
+        {
+            StateHasChanged();
+            return;
+        }
+
+        isLoading = true;
+        errorMessage = string.Empty;
+        StateHasChanged();
+
+        try
+        {
+            if (isEditMode && editingClientId.HasValue)
+            {
+                var updateClientDto = new UpdateClientDto
+                {
+                    ClientId = editingClientId.Value,
+                    ClientFullName = _clientFullName.Trim(),
+                    ClientPhone = _clientPhone.Trim(),
+                    ClientEmail = string.IsNullOrWhiteSpace(_clientEmail) ? null : _clientEmail.Trim(),
+                    IsActive = true
+                };
+
+                await ClientService.UpdateClientAsync(updateClientDto);
+                await JS.InvokeVoidAsync("alert", "Клиент успешно обновлен!");
+            }
+            else
+            {
+                var createClientDto = new CreateClientDto
+                {
+                    ClientFullName = _clientFullName.Trim(),
+                    ClientPhone = _clientPhone.Trim(),
+                    ClientEmail = string.IsNullOrWhiteSpace(_clientEmail) ? null : _clientEmail.Trim()
+                };
+
+                await ClientService.RegisterClientAsync(createClientDto);
+                await JS.InvokeVoidAsync("alert", "Клиент успешно добавлен!");
+            }
+
+            await LoadClients();
+            CloseModal();
+        }
+        catch (ArgumentException ex)
+        {
+            errorMessage = $"Ошибка валидации: {ex.Message}";
+        }
+        catch (InvalidOperationException ex)
+        {
+            errorMessage = ex.Message;
+        }
+        catch (DbUpdateException ex)
+        {
+            var innerMessage = ex.InnerException?.Message ?? ex.Message;
+            if (innerMessage.Contains("IX_Clients_ClientPhone"))
+                errorMessage = "Клиент с таким номером телефона уже существует";
+            else if (innerMessage.Contains("IX_Clients_ClientEmail"))
+                errorMessage = "Клиент с таким email уже существует";
+            else
+                errorMessage = $"Ошибка базы данных: {innerMessage}";
+        }
+        catch (Exception ex)
+        {
+            errorMessage = $"Неизвестная ошибка: {ex.Message}";
+        }
+        finally
+        {
+            isLoading = false;
+            StateHasChanged();
+        }
+    }
+
+    private async Task ToggleClientStatus(ClientDto client)
+    {
+        try
+        {
+            if (client.IsActive)
+            {
+                await ClientService.DeactivateClientAsync(client.ClientId);
+                await JS.InvokeVoidAsync("alert", "Клиент деактивирован");
+            }
+            else
+            {
+                await ClientService.ActivateClientAsync(client.ClientId);
+                await JS.InvokeVoidAsync("alert", "Клиент активирован");
+            }
+            await LoadClients();
+        }
+        catch (Exception ex)
+        {
+            await JS.InvokeVoidAsync("alert", $"Ошибка: {ex.Message}");
+        }
+    }
+
+    private async Task DeleteClient(int id)
+    {
+        if (!await JS.InvokeAsync<bool>("confirm", "Вы уверены, что хотите удалить клиента? Это также удалит все его записи."))
+            return;
+
+        try
+        {
+            await ClientService.RemoveClientAsync(id);
+            await LoadClients();
+            await JS.InvokeVoidAsync("alert", "Клиент успешно удален");
+        }
+        catch (InvalidOperationException ex)
+        {
+            await JS.InvokeVoidAsync("alert", ex.Message);
+        }
+        catch (DbUpdateException ex)
+        {
+            await JS.InvokeVoidAsync("alert", $"Ошибка удаления: {ex.InnerException?.Message ?? ex.Message}");
+        }
+        catch (Exception ex)
+        {
+            await JS.InvokeVoidAsync("alert", $"Ошибка: {ex.Message}");
+        }
+    }
+
+    private void CloseModal()
+    {
+        showModal = false;
+        isEditMode = false;
+        editingClientId = null;
+        ResetForm();
+        StateHasChanged();
+    }
+}

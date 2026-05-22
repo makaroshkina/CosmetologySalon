@@ -1,0 +1,717 @@
+﻿/* ========================================
+   CosmetologySalon — Global Styles
+   Цветовая гамма: Бирюзово-изумрудная тёмная
+   ======================================== */
+
+:root {
+    --teal-primary: #0d9488;
+    --teal-dark: #0f766e;
+    --teal-light: #14b8a6;
+    --teal-glow: rgba(20, 184, 166, 0.3);
+    --emerald: #10b981;
+    --emerald-dark: #059669;
+    --dark-bg: #0f172a;
+    --dark-bg-secondary: #1e293b;
+    --dark-bg-tertiary: #334155;
+    --text-primary: #f1f5f9;
+    --text-secondary: #e2e8f0;
+    --text-muted: #94a3b8;
+    --text-dim: #64748b;
+    --border-teal: rgba(20, 184, 166, 0.15);
+    --border-teal-strong: rgba(20, 184, 166, 0.3);
+    --danger: #ef4444;
+    --danger-light: #f87171;
+    --warning: #f59e0b;
+    --warning-light: #fbbf24;
+    --info: #3b82f6;
+    --info-light: #60a5fa;
+    --success: #10b981;
+    --success-light: #34d399;
+}
+
+/* ========================================
+   Base
+   ======================================== */
+
+html, body {
+    background-color: var(--dark-bg) !important;
+    color: var(--text-secondary);
+    font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+    line-height: 1.6;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+}
+
+/* ========================================
+   Scrollbar
+   ======================================== */
+
+::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+}
+
+::-webkit-scrollbar-track {
+    background: var(--dark-bg);
+}
+
+::-webkit-scrollbar-thumb {
+    background: linear-gradient(180deg, var(--teal-primary), var(--teal-dark));
+    border-radius: 4px;
+}
+
+    ::-webkit-scrollbar-thumb:hover {
+        background: linear-gradient(180deg, var(--teal-light), var(--teal-primary));
+    }
+
+::-webkit-scrollbar-corner {
+    background: var(--dark-bg);
+}
+
+/* ========================================
+   Selection
+   ======================================== */
+
+::selection {
+    background: var(--teal-glow);
+    color: white;
+}
+
+::-moz-selection {
+    background: var(--teal-glow);
+    color: white;
+}
+
+/* ========================================
+   Typography
+   ======================================== */
+
+h1, h2, h3, h4, h5, h6 {
+    color: var(--text-primary);
+    font-weight: 600;
+}
+
+h1 {
+    font-size: 2rem;
+}
+
+h2 {
+    font-size: 1.75rem;
+}
+
+h3 {
+    font-size: 1.5rem;
+}
+
+h4 {
+    font-size: 1.25rem;
+}
+
+p {
+    color: var(--text-muted);
+}
+
+a {
+    color: var(--teal-light);
+    text-decoration: none;
+    transition: color 0.2s ease;
+}
+
+    a:hover {
+        color: var(--teal-primary);
+    }
+
+/* ========================================
+   Bootstrap Overrides
+   ======================================== */
+
+.container {
+    color: var(--text-secondary);
+}
+
+.text-muted {
+    color: var(--text-muted) !important;
+}
+
+.text-primary {
+    color: var(--teal-light) !important;
+}
+
+.text-success {
+    color: var(--success-light) !important;
+}
+
+.text-danger {
+    color: var(--danger-light) !important;
+}
+
+.text-warning {
+    color: var(--warning-light) !important;
+}
+
+/* ========================================
+   Buttons (Global)
+   ======================================== */
+
+.btn {
+    border-radius: 0.75rem;
+    font-weight: 500;
+    transition: all 0.2s ease;
+    border: none;
+}
+
+    .btn:active {
+        transform: scale(0.98);
+    }
+
+.btn-teal {
+    background: linear-gradient(135deg, var(--teal-primary) 0%, var(--emerald-dark) 100%);
+    color: white;
+}
+
+    .btn-teal:hover {
+        background: linear-gradient(135deg, var(--teal-dark) 0%, #047857 100%);
+        transform: translateY(-2px);
+        box-shadow: 0 5px 15px rgba(13, 148, 136, 0.4);
+    }
+
+.btn-outline-teal {
+    color: var(--teal-light);
+    border: 2px solid var(--teal-light);
+    background: transparent;
+}
+
+    .btn-outline-teal:hover {
+        background: linear-gradient(135deg, var(--teal-primary) 0%, var(--emerald-dark) 100%);
+        border-color: transparent;
+        color: white;
+        transform: translateY(-2px);
+        box-shadow: 0 5px 15px rgba(13, 148, 136, 0.3);
+    }
+
+.btn-secondary-dark {
+    background: var(--dark-bg-tertiary);
+    color: var(--text-secondary);
+}
+
+    .btn-secondary-dark:hover {
+        background: #475569;
+        color: white;
+    }
+
+.btn-light {
+    background: rgba(255, 255, 255, 0.95);
+    color: var(--teal-dark);
+    font-weight: 600;
+}
+
+    .btn-light:hover {
+        background: white;
+        transform: translateY(-2px);
+        box-shadow: 0 5px 15px rgba(0, 0, 0, 0.2);
+    }
+
+.btn-outline-light {
+    color: rgba(255, 255, 255, 0.8);
+    border: 1px solid rgba(255, 255, 255, 0.3);
+    background: transparent;
+}
+
+    .btn-outline-light:hover {
+        background: rgba(255, 255, 255, 0.1);
+        color: white;
+        transform: translateY(-2px);
+    }
+
+/* ========================================
+   Forms
+   ======================================== */
+
+.form-control,
+.form-select {
+    border-radius: 0.75rem;
+    border: 1px solid var(--border-teal);
+    background: var(--dark-bg);
+    color: var(--text-secondary);
+    padding: 0.625rem 1rem;
+    font-size: 0.875rem;
+    transition: all 0.2s ease;
+}
+
+    .form-control:focus,
+    .form-select:focus {
+        border-color: var(--teal-light);
+        box-shadow: 0 0 0 3px rgba(20, 184, 166, 0.15);
+        background: var(--dark-bg);
+        color: var(--text-secondary);
+    }
+
+    .form-control::placeholder,
+    .form-select::placeholder {
+        color: var(--text-dim);
+    }
+
+    .form-control:disabled,
+    .form-select:disabled {
+        background: var(--dark-bg-secondary);
+        color: var(--text-dim);
+    }
+
+.form-label {
+    color: var(--text-secondary);
+    font-weight: 500;
+    font-size: 0.875rem;
+    margin-bottom: 0.5rem;
+}
+
+.input-group-text {
+    background: var(--dark-bg-secondary);
+    border: 1px solid var(--border-teal);
+    color: var(--teal-light);
+    border-radius: 0.75rem 0 0 0.75rem;
+}
+
+.form-check-input {
+    background-color: var(--dark-bg-secondary);
+    border-color: var(--border-teal);
+}
+
+    .form-check-input:checked {
+        background-color: var(--teal-primary);
+        border-color: var(--teal-primary);
+    }
+
+.form-check-label {
+    color: var(--text-muted);
+}
+
+/* ========================================
+   Alerts
+   ======================================== */
+
+.alert {
+    border-radius: 0.75rem;
+    border: 1px solid;
+    font-size: 0.875rem;
+}
+
+.alert-danger {
+    background: rgba(239, 68, 68, 0.1);
+    border-color: rgba(239, 68, 68, 0.2);
+    color: var(--danger-light);
+}
+
+.alert-success {
+    background: rgba(16, 185, 129, 0.1);
+    border-color: rgba(16, 185, 129, 0.2);
+    color: var(--success-light);
+}
+
+.alert-warning {
+    background: rgba(245, 158, 11, 0.1);
+    border-color: rgba(245, 158, 11, 0.2);
+    color: var(--warning-light);
+}
+
+.alert-info {
+    background: rgba(59, 130, 246, 0.1);
+    border-color: rgba(59, 130, 246, 0.2);
+    color: var(--info-light);
+}
+
+/* ========================================
+   Cards
+   ======================================== */
+
+.card {
+    background: linear-gradient(135deg, var(--dark-bg-secondary) 0%, var(--dark-bg) 100%);
+    border: 1px solid var(--border-teal);
+    border-radius: 1rem;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+    color: var(--text-secondary);
+}
+
+.card-header {
+    background: rgba(15, 23, 42, 0.8);
+    border-bottom: 1px solid var(--border-teal);
+    color: var(--text-primary);
+    font-weight: 600;
+    border-radius: 1rem 1rem 0 0 !important;
+}
+
+.card-body {
+    color: var(--text-secondary);
+}
+
+.card-footer {
+    background: rgba(15, 23, 42, 0.6);
+    border-top: 1px solid var(--border-teal);
+}
+
+/* ========================================
+   Tables
+   ======================================== */
+
+.table {
+    color: var(--text-secondary);
+    --bs-table-bg: transparent;
+    --bs-table-color: var(--text-secondary);
+    --bs-table-border-color: var(--border-teal);
+}
+
+    .table thead th {
+        background: rgba(15, 23, 42, 0.9);
+        color: var(--text-muted);
+        font-weight: 600;
+        font-size: 0.875rem;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+        border-bottom: 2px solid var(--border-teal);
+        padding: 1rem;
+    }
+
+    .table tbody td {
+        padding: 1rem;
+        vertical-align: middle;
+        border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+    }
+
+    .table tbody tr:hover {
+        background: rgba(20, 184, 166, 0.05);
+    }
+
+.table-striped > tbody > tr:nth-of-type(odd) > * {
+    --bs-table-accent-bg: rgba(255, 255, 255, 0.02);
+}
+
+/* ========================================
+   Modals
+   ======================================== */
+
+.modal-content {
+    background: linear-gradient(135deg, var(--dark-bg-secondary) 0%, var(--dark-bg) 100%);
+    border: 1px solid var(--border-teal-strong);
+    border-radius: 1.5rem;
+    box-shadow: 0 20px 40px rgba(0, 0, 0, 0.4);
+    color: var(--text-secondary);
+}
+
+.modal-header {
+    border-bottom: 1px solid var(--border-teal);
+    color: var(--text-primary);
+}
+
+.modal-footer {
+    border-top: 1px solid var(--border-teal);
+}
+
+.btn-close {
+    filter: invert(1) grayscale(100%) brightness(200%);
+    opacity: 0.5;
+}
+
+    .btn-close:hover {
+        opacity: 0.8;
+    }
+
+/* ========================================
+   Dropdowns
+   ======================================== */
+
+.dropdown-menu {
+    background: linear-gradient(135deg, var(--dark-bg-secondary) 0%, var(--dark-bg) 100%);
+    border: 1px solid var(--border-teal-strong);
+    border-radius: 0.75rem;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.4);
+}
+
+.dropdown-item {
+    color: var(--text-muted);
+    border-radius: 0.5rem;
+    margin: 0.125rem 0.5rem;
+    padding: 0.5rem 1rem;
+    width: auto;
+}
+
+    .dropdown-item:hover {
+        background: rgba(20, 184, 166, 0.1);
+        color: var(--teal-light);
+    }
+
+.dropdown-divider {
+    border-top: 1px solid var(--border-teal);
+    margin: 0.5rem;
+}
+
+/* ========================================
+   Badges
+   ======================================== */
+
+.badge {
+    font-weight: 600;
+    font-size: 0.75rem;
+    padding: 0.35em 0.75em;
+    border-radius: 0.5rem;
+}
+
+    .badge.bg-success {
+        background: linear-gradient(135deg, var(--success) 0%, var(--emerald-dark) 100%) !important;
+    }
+
+    .badge.bg-danger {
+        background: linear-gradient(135deg, var(--danger) 0%, #dc2626 100%) !important;
+    }
+
+    .badge.bg-warning {
+        background: linear-gradient(135deg, var(--warning) 0%, #d97706 100%) !important;
+        color: #000;
+    }
+
+    .badge.bg-info {
+        background: linear-gradient(135deg, var(--info) 0%, #2563eb 100%) !important;
+    }
+
+    .badge.bg-secondary {
+        background: linear-gradient(135deg, var(--dark-bg-tertiary) 0%, #475569 100%) !important;
+    }
+
+/* ========================================
+   Pagination
+   ======================================== */
+
+.pagination {
+    --bs-pagination-bg: var(--dark-bg-secondary);
+    --bs-pagination-border-color: var(--border-teal);
+    --bs-pagination-color: var(--text-muted);
+    --bs-pagination-hover-bg: rgba(20, 184, 166, 0.1);
+    --bs-pagination-hover-color: var(--teal-light);
+    --bs-pagination-hover-border-color: var(--border-teal);
+    --bs-pagination-active-bg: var(--teal-primary);
+    --bs-pagination-active-border-color: var(--teal-primary);
+    --bs-pagination-active-color: white;
+    --bs-pagination-disabled-bg: var(--dark-bg);
+    --bs-pagination-disabled-color: var(--text-dim);
+    --bs-pagination-disabled-border-color: var(--border-teal);
+}
+
+.page-link {
+    border-radius: 0.5rem;
+    margin: 0 0.125rem;
+}
+
+/* ========================================
+   Nav Tabs / Pills
+   ======================================== */
+
+.nav-tabs {
+    border-bottom: 1px solid var(--border-teal);
+}
+
+    .nav-tabs .nav-link {
+        color: var(--text-muted);
+        border: none;
+        border-bottom: 2px solid transparent;
+        border-radius: 0;
+        padding: 0.75rem 1.25rem;
+    }
+
+        .nav-tabs .nav-link:hover {
+            color: var(--teal-light);
+            border-color: transparent;
+            background: rgba(20, 184, 166, 0.05);
+        }
+
+        .nav-tabs .nav-link.active {
+            color: var(--teal-light);
+            background: transparent;
+            border-bottom-color: var(--teal-light);
+            font-weight: 600;
+        }
+
+.nav-pills .nav-link {
+    color: var(--text-muted);
+    border-radius: 0.75rem;
+}
+
+    .nav-pills .nav-link:hover {
+        background: rgba(20, 184, 166, 0.1);
+        color: var(--teal-light);
+    }
+
+    .nav-pills .nav-link.active {
+        background: linear-gradient(135deg, var(--teal-primary) 0%, var(--emerald-dark) 100%);
+        color: white;
+    }
+
+/* ========================================
+   Progress Bars
+   ======================================== */
+
+.progress {
+    background: var(--dark-bg-tertiary);
+    border-radius: 1rem;
+    height: 0.75rem;
+}
+
+.progress-bar {
+    background: linear-gradient(90deg, var(--teal-primary), var(--teal-light));
+    border-radius: 1rem;
+}
+
+/* ========================================
+   Spinners
+   ======================================== */
+
+.spinner-border.text-teal {
+    color: var(--teal-light) !important;
+}
+
+/* ========================================
+   Tooltips & Popovers
+   ======================================== */
+
+.tooltip-inner {
+    background: linear-gradient(135deg, var(--dark-bg-secondary), var(--dark-bg-tertiary));
+    border: 1px solid var(--border-teal);
+    border-radius: 0.5rem;
+}
+
+.popover {
+    background: linear-gradient(135deg, var(--dark-bg-secondary), var(--dark-bg));
+    border: 1px solid var(--border-teal-strong);
+    border-radius: 1rem;
+}
+
+.popover-header {
+    background: rgba(15, 23, 42, 0.8);
+    color: var(--text-primary);
+    border-bottom: 1px solid var(--border-teal);
+    border-radius: 1rem 1rem 0 0;
+}
+
+.popover-body {
+    color: var(--text-secondary);
+}
+
+/* ========================================
+   Blazor Error UI
+   ======================================== */
+
+#blazor-error-ui {
+    background: var(--dark-bg-secondary);
+    color: var(--danger-light);
+    border-top: 2px solid var(--danger);
+    bottom: 0;
+    box-shadow: 0 -1px 10px rgba(0, 0, 0, 0.3);
+    display: none;
+    left: 0;
+    padding: 1rem 1.5rem;
+    position: fixed;
+    width: 100%;
+    z-index: 10000;
+}
+
+    #blazor-error-ui .dismiss {
+        cursor: pointer;
+        position: absolute;
+        right: 1.5rem;
+        top: 1rem;
+        color: var(--text-muted);
+    }
+
+    #blazor-error-ui .reload {
+        color: var(--teal-light);
+        margin-left: 1rem;
+        text-decoration: underline;
+    }
+
+/* ========================================
+   Utilities
+   ======================================== */
+
+.shadow-teal {
+    box-shadow: 0 4px 20px rgba(13, 148, 136, 0.3) !important;
+}
+
+.shadow-teal-lg {
+    box-shadow: 0 10px 40px rgba(13, 148, 136, 0.25) !important;
+}
+
+.border-teal {
+    border-color: var(--border-teal) !important;
+}
+
+.bg-dark-card {
+    background: linear-gradient(135deg, var(--dark-bg-secondary) 0%, var(--dark-bg) 100%) !important;
+}
+
+.text-gradient-teal {
+    background: linear-gradient(135deg, var(--teal-light), var(--emerald));
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+}
+
+/* ========================================
+   Animations
+   ======================================== */
+
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+        transform: translateY(10px);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.animate-fade-in {
+    animation: fadeIn 0.4s ease-out;
+}
+
+@keyframes pulse-teal {
+    0%, 100% {
+        box-shadow: 0 0 0 0 rgba(20, 184, 166, 0.4);
+    }
+
+    50% {
+        box-shadow: 0 0 0 10px rgba(20, 184, 166, 0);
+    }
+}
+
+.pulse-teal {
+    animation: pulse-teal 2s infinite;
+}
+
+/* ========================================
+   Responsive
+   ======================================== */
+
+@media (max-width: 768px) {
+    html {
+        font-size: 14px;
+    }
+
+    h1 {
+        font-size: 1.5rem;
+    }
+
+    h2 {
+        font-size: 1.25rem;
+    }
+
+    h3 {
+        font-size: 1.125rem;
+    }
+
+    .card {
+        border-radius: 0.75rem;
+    }
+
+    .btn {
+        padding: 0.5rem 0.875rem;
+    }
+}

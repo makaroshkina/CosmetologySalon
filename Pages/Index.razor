@@ -1,0 +1,462 @@
+﻿@page "/"
+@using CosmetologySalon.DTOs
+@using Microsoft.EntityFrameworkCore
+@inject CosmetologySalon.Data.SalonAppDbContext Context
+@inject NavigationManager Navigation
+@inject IMaster MasterService
+@inject IService ServiceService
+@inject IAppointment AppointmentService
+
+<div class="container mt-4">
+    <!-- Hero секция -->
+    <div class="hero-section text-center py-5 mb-5 rounded-4" style="background: linear-gradient(135deg, #0d9488 0%, #059669 100%);">
+        <div class="container">
+            <h1 class="display-3 fw-bold text-white mb-3">
+                <i class="fas fa-spa me-3"></i>Добро пожаловать в CosmetologySalon
+            </h1>
+            <p class="lead text-white-50 mb-4">Наша цель - ваша красота</p>
+            <div class="d-flex justify-content-center gap-3 flex-wrap">
+                <button class="btn btn-light btn-lg px-4" @onclick="GoToAppointments">
+                    <i class="fas fa-calendar-alt me-2"></i>Записаться
+                </button>
+                <button class="btn btn-outline-light btn-lg px-4" @onclick="GoToServices">
+                    <i class="fas fa-store me-2"></i>Услуги
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Статистика -->
+    <div class="row text-center mb-5 g-4">
+        <div class="col-md-3">
+            <div class="stats-card p-4 rounded-3 shadow-sm" style="background: linear-gradient(135deg, #0d9488 0%, #059669 100%);">
+                <i class="fas fa-users fa-3x text-white mb-3"></i>
+                <h3 class="text-white mb-0">@_mastersCount</h3>
+                <p class="text-white-50 mb-0">Профессиональных мастеров</p>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="stats-card p-4 rounded-3 shadow-sm" style="background: linear-gradient(135deg, #14b8a6 0%, #0d9488 100%);">
+                <i class="fas fa-cut fa-3x text-white mb-3"></i>
+                <h3 class="text-white mb-0">@_servicesCount</h3>
+                <p class="text-white-50 mb-0">Видов услуг</p>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="stats-card p-4 rounded-3 shadow-sm" style="background: linear-gradient(135deg, #0f766e 0%, #0d9488 100%);">
+                <i class="fas fa-calendar-check fa-3x text-white mb-3"></i>
+                <h3 class="text-white mb-0">@_appointmentsCount</h3>
+                <p class="text-white-50 mb-0">Выполненных записей</p>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="stats-card p-4 rounded-3 shadow-sm" style="background: linear-gradient(135deg, #059669 0%, #047857 100%);">
+                <i class="fas fa-star fa-3x text-white mb-3"></i>
+                <h3 class="text-white mb-0">4.9</h3>
+                <p class="text-white-50 mb-0">Рейтинг клиентов</p>
+            </div>
+        </div>
+    </div>
+        
+    <!-- Наши мастера -->
+    <div class="masters-section mb-5">
+        <div class="d-flex justify-content-between align-items-center mb-4">
+            <h2 class="mb-0">
+                <i class="fas fa-users text-teal me-2"></i>Наши мастера
+            </h2>
+            <button class="btn btn-outline-teal" @onclick="LoadMasters">
+                <i class="fas fa-sync-alt me-2"></i>Обновить
+            </button>
+        </div>
+
+        @if (_isLoadingMasters)
+        {
+            <div class="text-center py-5">
+                <div class="spinner-border text-teal" role="status">
+                    <span class="visually-hidden">Загрузка...</span>
+                </div>
+            </div>
+        }
+        else
+        {
+            <div class="row g-4">
+                @foreach (var master in _masters.Take(4))
+                {
+                    <div class="col-md-4 col-lg-3">
+                        <div class="master-card card shadow-sm border-0 rounded-4 text-center p-4 h-100" style="background: linear-gradient(135deg, #0d9488 0%, #059669 100%);">
+                            <div class="master-avatar mx-auto mb-3">
+                                <div class="avatar-circle bg-white d-flex align-items-center justify-content-center rounded-circle mx-auto" style="width: 100px; height: 100px;">
+                                    <span class="display-4 fw-bold text-teal">@GetInitials(master.MasterFullName)</span>
+                                </div>
+                            </div>
+                            <h5 class="mb-1 text-white">@master.MasterFullName</h5>
+                            <p class="text-white-50 small mb-2">
+                                <i class="fas fa-briefcase me-1"></i>Опытный специалист
+                            </p>
+                            <p class="text-warning small mb-2">
+                                <i class="fas fa-star me-1"></i>
+                                <i class="fas fa-star me-1"></i>
+                                <i class="fas fa-star me-1"></i>
+                                <i class="fas fa-star me-1"></i>
+                                <i class="fas fa-star-half-alt me-1"></i>
+                            </p>
+                            <p class="experience-text small text-white-50">
+                                <i class="fas fa-calendar-alt me-1"></i>Записей: @master.AppointmentsCount
+                            </p>
+                            <button class="btn btn-sm btn-outline-light mt-2 w-100" @onclick="GoToAppointments">
+                                <i class="fas fa-calendar-alt me-2"></i>Записаться
+                            </button>
+                        </div>
+                    </div>
+                }
+            </div>
+        }
+    </div>
+
+    <!-- Преимущества -->
+    <div class="features-section mb-5">
+        <h2 class="text-center mb-5">
+            <i class="fas fa-gem text-teal me-2"></i>Почему выбирают нас
+        </h2>
+        <div class="row g-4">
+            <div class="col-md-3">
+                <div class="feature-card text-center p-4 rounded-4 shadow-sm h-100">
+                    <div class="feature-icon mb-3">
+                        <i class="fas fa-medal fa-3x text-teal"></i>
+                    </div>
+                    <h5>Профессионализм</h5>
+                    <p class="text-muted small">Опытные мастера с многолетним стажем</p>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="feature-card text-center p-4 rounded-4 shadow-sm h-100">
+                    <div class="feature-icon mb-3">
+                        <i class="fas fa-clock fa-3x text-teal"></i>
+                    </div>
+                    <h5>Удобное время</h5>
+                    <p class="text-muted small">Работаем с 8:00 до 18:00 ежедневно</p>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="feature-card text-center p-4 rounded-4 shadow-sm h-100">
+                    <div class="feature-icon mb-3">
+                        <i class="fas fa-leaf fa-3x text-teal"></i>
+                    </div>
+                    <h5>Качественные материалы</h5>
+                    <p class="text-muted small">Используем только премиум продукцию</p>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="feature-card text-center p-4 rounded-4 shadow-sm h-100">
+                    <div class="feature-icon mb-3">
+                        <i class="fas fa-hand-sparkles fa-3x text-teal"></i>
+                    </div>
+                    <h5>Индивидуальный подход</h5>
+                    <p class="text-muted small">Учитываем все пожелания клиентов</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Отзывы -->
+    <div class="reviews-section mb-5">
+        <h2 class="text-center mb-5">
+            <i class="fas fa-comments text-teal me-2"></i>Что говорят клиенты
+        </h2>
+        <div class="row g-4">
+            <div class="col-md-4">
+                <div class="review-card p-4 rounded-4 shadow-sm h-100">
+                    <div class="mb-3">
+                        <i class="fas fa-star text-warning"></i>
+                        <i class="fas fa-star text-warning"></i>
+                        <i class="fas fa-star text-warning"></i>
+                        <i class="fas fa-star text-warning"></i>
+                        <i class="fas fa-star text-warning"></i>
+                    </div>
+                    <p class="review-text">"Отличный салон! Мастера профессионалы, обслуживание на высшем уровне. Обязательно приду еще!"</p>
+                    <div class="review-author mt-3">
+                        <strong>Анна Иванова</strong>
+                        <div class="text-muted small">Чистка лица</div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-4">
+                <div class="review-card p-4 rounded-4 shadow-sm h-100">
+                    <div class="mb-3">
+                        <i class="fas fa-star text-warning"></i>
+                        <i class="fas fa-star text-warning"></i>
+                        <i class="fas fa-star text-warning"></i>
+                        <i class="fas fa-star text-warning"></i>
+                        <i class="fas fa-star text-warning"></i>
+                    </div>
+                    <p class="review-text">"Очень довольна результатом! Спасибо мастеру за профессиональный подход и отличное настроение!"</p>
+                    <div class="review-author mt-3">
+                        <strong>Мария Петрова</strong>
+                        <div class="text-muted small">Массаж спины</div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-4">
+                <div class="review-card p-4 rounded-4 shadow-sm h-100">
+                    <div class="mb-3">
+                        <i class="fas fa-star text-warning"></i>
+                        <i class="fas fa-star text-warning"></i>
+                        <i class="fas fa-star text-warning"></i>
+                        <i class="fas fa-star text-warning"></i>
+                        <i class="fas fa-star text-warning"></i>
+                    </div>
+                    <p class="review-text">"Лучший салон в городе! Всегда чисто, уютно и профессионально. Рекомендую всем!"</p>
+                    <div class="review-author mt-3">
+                        <strong>Екатерина Смирнова</strong>
+                        <div class="text-muted small">Маникюр</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Контакты -->
+    <div class="contacts-section">
+        <div class="row g-4">
+            <div class="col-md-6">
+                <div class="contact-card p-4 rounded-4 shadow-sm h-100">
+                    <h4 class="mb-4">
+                        <i class="fas fa-map-marker-alt text-teal me-2"></i>Наш адрес
+                    </h4>
+                    <p><i class="fas fa-location-dot me-2 text-teal"></i> г. Москва, ул. Энтузиастов, д.167</p>
+                    <p><i class="fas fa-phone me-2 text-teal"></i> +7 (999) 123-45-67</p>
+                    <p><i class="fas fa-envelope me-2 text-teal"></i> info@cosmetologysalon.ru</p>
+                    <p><i class="fas fa-clock me-2 text-teal"></i> Пн-Вс: 8:00 - 18:00</p>
+                    <div class="social-links mt-3">
+                        <a href="#" class="btn btn-outline-teal btn-sm rounded-circle me-2">
+                            <i class="fab fa-telegram"></i>
+                        </a>
+                        <a href="#" class="btn btn-outline-teal btn-sm rounded-circle me-2">
+                            <i class="fab fa-instagram"></i>
+                        </a>
+                        <a href="#" class="btn btn-outline-teal btn-sm rounded-circle me-2">
+                            <i class="fab fa-vk"></i>
+                        </a>
+                        <a href="#" class="btn btn-outline-teal btn-sm rounded-circle">
+                            <i class="fab fa-whatsapp"></i>
+                        </a>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-6">
+                <div class="map-card p-4 rounded-4 shadow-sm h-100">
+                    <h4 class="mb-4">
+                        <i class="fas fa-map text-teal me-2"></i>Как нас найти
+                    </h4>
+                    <div class="map-placeholder bg-light rounded-3 d-flex align-items-center justify-content-center" style="height: 250px;">
+                        <div class="text-center text-muted">
+                            <i class="fas fa-map-marked-alt fa-4x mb-3 opacity-50"></i>
+                            <p>Интерактивная карта</p>
+                            <small>г. Москва, ул. Энтузиастов, д.167</small>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Footer -->
+<footer class="footer mt-5 pt-4 pb-3 border-top">
+    <div class="row">
+        <div class="col-md-4">
+            <h5><i class="fas fa-spa me-2 text-teal"></i>CosmetologySalon</h5>
+            <p class="text-muted small">Салон красоты премиум класса. Забота о вашей красоте - наша главная задача.</p>
+        </div>
+        <div class="col-md-4">
+            <h6>Быстрые ссылки</h6>
+            <ul class="list-unstyled">
+                <li><button class="btn btn-link text-muted small p-0 text-decoration-none" @onclick="GoToServices">Услуги</button></li>
+                <li><button class="btn btn-link text-muted small p-0 text-decoration-none" @onclick="GoToAppointments">Запись онлайн</button></li>
+                <li><button class="btn btn-link text-muted small p-0 text-decoration-none" @onclick="ScrollToMasters">Наши мастера</button></li>
+            </ul>
+        </div>
+        <div class="col-md-4">
+            <h6>Рабочее время</h6>
+            <p class="text-muted small mb-0">Понедельник - Воскресенье</p>
+            <p class="text-muted small">8:00 - 18:00</p>
+        </div>
+    </div>
+    <div class="text-center text-muted small mt-3 pt-3 border-top">
+        &copy; @DateTime.Now.Year CosmetologySalon. Все права защищены.
+    </div>
+</footer>
+
+<style>
+    .stats-card, .service-card, .master-card, .feature-card, .review-card, .contact-card, .map-card {
+        transition: transform 0.3s ease, box-shadow 0.3s ease;
+    }
+
+        .stats-card:hover, .service-card:hover, .master-card:hover, .feature-card:hover, .review-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 10px 30px rgba(0,0,0,0.15) !important;
+        }
+
+    .text-teal {
+        color: #0d9488 !important;
+    }
+
+    .btn-outline-teal {
+        color: #0d9488;
+        border: 1px solid #0d9488;
+        background: transparent;
+    }
+
+        .btn-outline-teal:hover {
+            background: linear-gradient(135deg, #0d9488 0%, #059669 100%);
+            color: white;
+            border-color: transparent;
+        }
+
+    .avatar-circle {
+        background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+        box-shadow: 0 5px 15px rgba(13, 148, 136, 0.3);
+    }
+
+    .price-tag {
+        font-weight: bold;
+    }
+
+    .service-icon {
+        width: 60px;
+        height: 60px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        background: rgba(255, 255, 255, 0.2);
+        border-radius: 12px;
+    }
+
+    .feature-icon {
+        color: #0d9488;
+    }
+
+    .social-links .btn {
+        width: 35px;
+        height: 35px;
+        padding: 0;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+    }
+
+    .map-placeholder {
+        background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+    }
+
+    .footer a:hover {
+        color: #0d9488 !important;
+    }
+
+    .btn-light {
+        background: white;
+        color: #0d9488;
+        border: none;
+    }
+
+        .btn-light:hover {
+            background: #f8f9fa;
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+        }
+
+    .btn-outline-light:hover {
+        background: rgba(255,255,255,0.1);
+        transform: translateY(-2px);
+    }
+</style>
+
+@code {
+    private List<MasterDto> _masters = new();
+    private List<ServiceDto> _popularServices = new();
+    private int _mastersCount = 0;
+    private int _servicesCount = 0;
+    private int _appointmentsCount = 0;
+    private bool _isLoadingMasters = true;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadMasters();
+        await LoadServices();
+        await LoadAppointmentsCount();
+    }
+
+    private async Task LoadMasters()
+    {
+        try
+        {
+            _isLoadingMasters = true;
+            _masters = await MasterService.GetAllMastersAsync();
+            _mastersCount = _masters.Count;
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Ошибка загрузки мастеров: {ex.Message}");
+        }
+        finally
+        {
+            _isLoadingMasters = false;
+            StateHasChanged();
+        }
+    }
+
+    private async Task LoadServices()
+    {
+        try
+        {
+            var servicesEnumerable = await ServiceService.GetAllServicesAsync();
+            var allServices = servicesEnumerable.ToList();
+            _servicesCount = allServices.Count;           
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Ошибка загрузки услуг: {ex.Message}");
+        }
+        StateHasChanged();
+    }
+
+    private async Task LoadAppointmentsCount()
+    {
+        try
+        {
+            var appointments = await AppointmentService.GetAllAppointmentsAsync();
+            _appointmentsCount = appointments.Count(a => a.Status == AppointmentStatus.Completed);
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Ошибка загрузки записей: {ex.Message}");
+        }
+        StateHasChanged();
+    }
+
+    private void GoToAppointments()
+    {
+        Navigation.NavigateTo("/appointments");
+    }
+
+    private void GoToServices()
+    {
+        Navigation.NavigateTo("/services");
+    }
+
+    private void ScrollToMasters()
+    {
+        Navigation.NavigateTo("/masters");
+    }
+
+    private string GetInitials(string? fullName)
+    {
+        if (string.IsNullOrWhiteSpace(fullName)) return "M";
+        var parts = fullName.Trim().Split(' ', StringSplitOptions.RemoveEmptyEntries);
+        if (parts.Length >= 2 && parts[0].Length > 0 && parts[1].Length > 0)
+            return $"{parts[0][0]}{parts[1][0]}".ToUpper();
+        if (parts.Length >= 1 && parts[0].Length > 0)
+            return parts[0][0].ToString().ToUpper();
+        return "M";
+    }
+}

@@ -1,0 +1,1067 @@
+﻿@inherits LayoutComponentBase
+@using Microsoft.EntityFrameworkCore
+@using Microsoft.AspNetCore.Components.Web
+@using CosmetologySalon.Models
+@using CosmetologySalon.DTOs
+@using CosmetologySalon.Services.Interfaces
+@inject NavigationManager Navigation
+@inject CosmetologySalon.Data.SalonAppDbContext Context
+@inject IJSRuntime JS
+
+<div class="page" @onclick="CloseDropdownOnOutside">
+    <!-- Боковое меню -->
+    <nav class="nav-menu">
+        <div class="nav-header">
+            <div class="logo" @onclick='() => Navigation.NavigateTo("/")' style="cursor: pointer;">
+                <i class="fas fa-spa logo-icon"></i>
+                <span class="logo-text">CosmetologySalon</span>
+            </div>
+        </div>
+        <div class="nav-links">
+            <NavLink href="/" class="nav-link" Match="NavLinkMatch.All">
+                <span class="nav-icon">🏠</span>
+                <span>Главная</span>
+            </NavLink>
+
+            <div class="nav-group">
+                <div class="nav-group-title">Управление</div>
+                <NavLink href="/clients" class="nav-link">
+                    <span class="nav-icon">👥</span>
+                    <span>Клиенты</span>
+                </NavLink>
+                <NavLink href="/masters" class="nav-link">
+                    <span class="nav-icon">💇‍♀️</span>
+                    <span>Мастера</span>
+                </NavLink>
+                <NavLink href="/services" class="nav-link">
+                    <span class="nav-icon">💅</span>
+                    <span>Услуги</span>
+                </NavLink>
+            </div>
+
+            <div class="nav-group">
+                <div class="nav-group-title">Операции</div>
+                <NavLink href="/appointments" class="nav-link">
+                    <span class="nav-icon">📅</span>
+                    <span>Записи</span>
+                </NavLink>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Основной контент -->
+    <main class="main-content">
+        <!-- Верхняя панель -->
+        <div class="top-bar">
+            <div class="top-bar-content">                
+                <div class="auth-buttons">
+                    @if (_currentClientId == 0)
+                    {
+                        <button class="btn btn-outline-teal btn-sm" @onclick="ShowLoginModal">
+                            <i class="fas fa-sign-in-alt me-1"></i>Войти
+                        </button>
+                        <button class="btn btn-teal btn-sm" @onclick="ShowRegisterModal">
+                            <i class="fas fa-user-plus me-1"></i>Регистрация
+                        </button>
+                    }
+                    else
+                    {
+                        <div class="dropdown-container">
+                            <button class="user-menu-btn" @onclick="ToggleDropdown" @onclick:stopPropagation>
+                                <i class="fas fa-user-circle me-1"></i>@_currentClientName
+                                <span class="dropdown-arrow">▼</span>
+                            </button>
+
+                            @if (showDropdown)
+                            {
+                                <div class="dropdown-menu-custom" @onclick:stopPropagation>
+                                    <div class="dropdown-header">
+                                        <i class="fas fa-id-card me-1"></i>
+                                        <span class="badge-client">Клиент</span>
+                                    </div>
+                                    <div class="dropdown-divider"></div>
+                                    <button class="dropdown-item" @onclick="GoToMyAppointments">
+                                        <i class="fas fa-calendar-alt me-2 text-teal"></i>
+                                        <span>Мои записи</span>
+                                    </button>
+                                    <div class="dropdown-divider"></div>
+                                    <button class="dropdown-item text-danger" @onclick="Logout">
+                                        <i class="fas fa-sign-out-alt me-2"></i>Выйти
+                                    </button>
+                                </div>
+                            }
+                        </div>
+                    }
+                </div>
+            </div>
+        </div>
+
+        <!-- Контент страницы -->
+        <article class="content px-4">
+            @Body
+        </article>
+    </main>
+
+    <!-- Модальное окно входа -->
+    @if (showLoginModal)
+    {
+        <div class="modal-backdrop" @onclick="CloseLoginModal"></div>
+        <div class="modal-custom modal-login" @onclick:stopPropagation>
+            <div class="modal-header-dark">
+                <h5 class="modal-title text-white">
+                    <i class="fas fa-sign-in-alt text-teal me-2"></i>Вход в аккаунт
+                </h5>
+                <button type="button" class="btn-close btn-close-white" @onclick="CloseLoginModal"></button>
+            </div>
+            <div class="modal-body-dark">
+                @if (!string.IsNullOrEmpty(loginErrorMessage))
+                {
+                    <div class="alert alert-danger">
+                        <i class="fas fa-exclamation-circle me-2"></i>@loginErrorMessage
+                    </div>
+                }
+
+                <div class="form-group">
+                    <label class="form-label text-white">Телефон <span class="text-danger">*</span></label>
+                    <div class="input-group">
+                        <span class="input-group-text input-group-text-dark">+7</span>
+                        <input type="tel" class="form-control form-control-dark @(loginPhoneError ? "is-invalid" : "")"
+                               @bind="_loginPhone" @bind:event="oninput" placeholder="9991234567" maxlength="10" />
+                    </div>
+                    @if (loginPhoneError)
+                    {
+                        <div class="invalid-feedback">Введите номер телефона</div>
+                    }
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label text-white">Пароль <span class="text-danger">*</span></label>
+                    <div class="input-group">
+                        <input type="@(showLoginPassword ? "text" : "password")"
+                               class="form-control form-control-dark @(loginPasswordError ? "is-invalid" : "")"
+                               @bind="_loginPassword" @bind:event="oninput" placeholder="Введите пароль" />
+                        <button class="btn btn-outline-teal" type="button" @onclick="() => showLoginPassword = !showLoginPassword">
+                            <i class="fas @(showLoginPassword ? "fa-eye-slash" : "fa-eye")"></i>
+                        </button>
+                    </div>
+                    @if (loginPasswordError)
+                    {
+                        <div class="invalid-feedback">Введите пароль</div>
+                    }
+                </div>
+
+                <button class="btn btn-teal w-100 py-2" @onclick="Login" disabled="@isLoggingIn">
+                    @if (isLoggingIn)
+                    {
+                        <span class="spinner-border spinner-border-sm me-2"></span>
+                    }
+                    <i class="fas fa-sign-in-alt me-2"></i>Войти
+                </button>
+
+                <div class="text-center mt-3">
+                    <p class="text-white-50 mb-0">
+                        Нет аккаунта?
+                        <button class="btn btn-link p-0 text-teal" @onclick="SwitchToRegister">
+                            Зарегистрироваться
+                        </button>
+                    </p>
+                </div>
+            </div>
+        </div>
+    }
+
+    <!-- Модальное окно регистрации -->
+    @if (showRegisterModal)
+    {
+        <div class="modal-backdrop" @onclick="CloseRegisterModal"></div>
+        <div class="modal-custom modal-login" @onclick:stopPropagation>
+            <div class="modal-header-dark">
+                <h5 class="modal-title text-white">
+                    <i class="fas fa-user-plus text-teal me-2"></i>Регистрация
+                </h5>
+                <button type="button" class="btn-close btn-close-white" @onclick="CloseRegisterModal"></button>
+            </div>
+            <div class="modal-body-dark">
+                @if (!string.IsNullOrEmpty(registerErrorMessage))
+                {
+                    <div class="alert alert-danger">
+                        <i class="fas fa-exclamation-circle me-2"></i>@registerErrorMessage
+                    </div>
+                }
+
+                <div class="form-group">
+                    <label class="form-label text-white">ФИО <span class="text-danger">*</span></label>
+                    <input type="text" class="form-control form-control-dark @(regNameError ? "is-invalid" : "")"
+                           @bind="_regFullName" @bind:event="oninput" placeholder="Иванов Иван Иванович" />
+                    @if (regNameError)
+                    {
+                        <div class="invalid-feedback">ФИО обязательно</div>
+                    }
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label text-white">Телефон <span class="text-danger">*</span></label>
+                    <div class="input-group">
+                        <span class="input-group-text input-group-text-dark">+7</span>
+                        <input type="tel" class="form-control form-control-dark @(regPhoneError ? "is-invalid" : "")"
+                               @bind="_regPhone" @bind:event="oninput" placeholder="9991234567" maxlength="10" />
+                    </div>
+                    @if (regPhoneError)
+                    {
+                        <div class="invalid-feedback">Введите корректный номер телефона</div>
+                    }
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label text-white">Email</label>
+                    <input type="email" class="form-control form-control-dark @(regEmailError ? "is-invalid" : "")"
+                           @bind="_regEmail" @bind:event="oninput" placeholder="example@mail.com" />
+                    @if (regEmailError)
+                    {
+                        <div class="invalid-feedback">Введите корректный email</div>
+                    }
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label text-white">Пароль <span class="text-danger">*</span></label>
+                    <div class="input-group">
+                        <input type="@(showRegPassword ? "text" : "password")"
+                               class="form-control form-control-dark @(regPasswordError ? "is-invalid" : "")"
+                               @bind="_regPassword" @bind:event="oninput" placeholder="Минимум 6 символов" />
+                        <button class="btn btn-outline-teal" type="button" @onclick="() => showRegPassword = !showRegPassword">
+                            <i class="fas @(showRegPassword ? "fa-eye-slash" : "fa-eye")"></i>
+                        </button>
+                    </div>
+                    @if (regPasswordError)
+                    {
+                        <div class="invalid-feedback">Пароль должен быть не менее 6 символов</div>
+                    }
+                </div>
+
+                <div class="alert alert-info small">
+                    <i class="fas fa-info-circle me-1 text-teal"></i>
+                    После регистрации вы сможете записываться к мастерам
+                </div>
+
+                <button class="btn btn-teal w-100 py-2" @onclick="Register" disabled="@isRegistering">
+                    @if (isRegistering)
+                    {
+                        <span class="spinner-border spinner-border-sm me-2"></span>
+                    }
+                    <i class="fas fa-check me-2"></i>Зарегистрироваться
+                </button>
+
+                <div class="text-center mt-3">
+                    <p class="text-white-50 mb-0">
+                        Уже есть аккаунт?
+                        <button class="btn btn-link p-0 text-teal" @onclick="SwitchToLogin">
+                            Войти
+                        </button>
+                    </p>
+                </div>
+            </div>
+        </div>
+    }
+</div>
+
+<style>
+    :root {
+        --teal-primary: #0d9488;
+        --teal-dark: #0f766e;
+        --teal-light: #14b8a6;
+        --dark-bg: #0f172a;
+        --dark-bg-secondary: #1e293b;
+    }
+
+    .page {
+        display: flex;
+        min-height: 100vh;
+        background: var(--dark-bg);
+    }
+
+    /* ===== NAV MENU ===== */
+    .nav-menu {
+        background: linear-gradient(180deg, #0f172a 0%, #134e4a 100%);
+        height: 100vh;
+        width: 260px;
+        position: fixed;
+        left: 0;
+        top: 0;
+        color: #e2e8f0;
+        overflow-y: auto;
+        border-right: 1px solid rgba(20, 184, 166, 0.15);
+        z-index: 1000;
+    }
+
+    .nav-header {
+        padding: 1.5rem;
+        border-bottom: 1px solid rgba(20, 184, 166, 0.15);
+    }
+
+    .logo {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        font-size: 1.25rem;
+        font-weight: 700;
+        cursor: pointer;
+    }
+
+    .logo-icon {
+        font-size: 1.5rem;
+        color: #14b8a6;
+    }
+
+    .logo-text {
+        background: linear-gradient(135deg, #14b8a6 0%, #0d9488 100%);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+        background-clip: text;
+        font-size: 1.1rem;
+    }
+
+    .nav-group {
+        margin: 1rem 0;
+    }
+
+    .nav-group-title {
+        padding: 0.5rem 1.5rem;
+        font-size: 0.7rem;
+        text-transform: uppercase;
+        letter-spacing: 1.5px;
+        color: rgba(255,255,255,0.35);
+        font-weight: 600;
+    }
+
+    .nav-link {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        padding: 0.75rem 1.5rem;
+        color: #94a3b8;
+        text-decoration: none;
+        transition: all 0.3s ease;
+        margin: 0 0.5rem;
+        border-radius: 0.75rem;
+    }
+
+        .nav-link:hover {
+            background: rgba(20, 184, 166, 0.1);
+            color: #14b8a6;
+        }
+
+        .nav-link.active {
+            background: linear-gradient(135deg, rgba(20, 184, 166, 0.2) 0%, rgba(13, 148, 136, 0.15) 100%);
+            color: #14b8a6;
+            border-left: 3px solid #14b8a6;
+        }
+
+    .nav-icon {
+        font-size: 1.25rem;
+        width: 24px;
+        text-align: center;
+    }
+
+    /* ===== MAIN CONTENT ===== */
+    .main-content {
+        margin-left: 260px;
+        width: calc(100% - 260px);
+        min-height: 100vh;
+    }
+
+    .top-bar {
+        background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%);
+        height: 60px;
+        position: sticky;
+        top: 0;
+        z-index: 99;
+        border-bottom: 1px solid rgba(20, 184, 166, 0.1);
+        box-shadow: 0 2px 10px rgba(0,0,0,0.2);
+    }
+
+    .top-bar-content {
+        display: flex;
+        justify-content: flex-end;
+        align-items: center;
+        height: 100%;
+        padding: 0 1.5rem;
+    }
+
+    .brand-logo {
+        font-size: 1.25rem;
+        font-weight: 600;
+        color: #14b8a6;
+        cursor: pointer;
+        transition: opacity 0.2s ease;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+    }
+
+        .brand-logo:hover {
+            opacity: 0.8;
+        }
+
+        .brand-logo i {
+            font-size: 1.25rem;
+        }
+
+    .auth-buttons {
+        display: flex;
+        gap: 12px;
+        align-items: center;
+    }
+
+    .content {
+        padding-top: 1.5rem;
+        padding-bottom: 2rem;
+    }
+
+    /* ===== BUTTONS ===== */
+    .btn-teal {
+        background: linear-gradient(135deg, #0d9488 0%, #059669 100%);
+        color: white;
+        border: none;
+        border-radius: 0.75rem;
+        padding: 0.5rem 1rem;
+        font-weight: 500;
+        transition: all 0.2s;
+        cursor: pointer;
+    }
+
+        .btn-teal:hover {
+            background: linear-gradient(135deg, #0f766e 0%, #047857 100%);
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(13, 148, 136, 0.4);
+        }
+
+        .btn-teal:disabled {
+            opacity: 0.6;
+            transform: none;
+            cursor: not-allowed;
+        }
+
+    .btn-outline-teal {
+        color: #14b8a6;
+        border: 2px solid #14b8a6;
+        background: transparent;
+        border-radius: 0.75rem;
+        padding: 0.5rem 1rem;
+        font-weight: 500;
+        transition: all 0.2s;
+        cursor: pointer;
+    }
+
+        .btn-outline-teal:hover {
+            background: linear-gradient(135deg, #0d9488 0%, #059669 100%);
+            border-color: transparent;
+            color: white;
+            transform: translateY(-2px);
+        }
+
+    .btn-sm {
+        padding: 0.25rem 0.75rem;
+        font-size: 0.875rem;
+    }
+
+    /* ===== DROPDOWN ===== */
+    .dropdown-container {
+        position: relative;
+        display: inline-block;
+    }
+
+    .user-menu-btn {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        padding: 6px 14px;
+        background: linear-gradient(135deg, #0d9488 0%, #059669 100%);
+        border: none;
+        border-radius: 30px;
+        color: white;
+        cursor: pointer;
+        transition: all 0.3s ease;
+        font-size: 14px;
+    }
+
+        .user-menu-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(13, 148, 136, 0.4);
+        }
+
+    .dropdown-arrow {
+        font-size: 10px;
+        margin-left: 5px;
+    }
+
+    .dropdown-menu-custom {
+        position: absolute;
+        top: 100%;
+        right: 0;
+        margin-top: 10px;
+        background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%);
+        min-width: 220px;
+        box-shadow: 0 10px 30px rgba(0,0,0,0.4);
+        border-radius: 12px;
+        border: 1px solid rgba(20, 184, 166, 0.2);
+        z-index: 10000;
+        overflow: hidden;
+    }
+
+    .dropdown-header {
+        padding: 12px 16px;
+        background: rgba(15, 23, 42, 0.8);
+        color: #e2e8f0;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        font-size: 0.875rem;
+    }
+
+    .badge-client {
+        background: linear-gradient(135deg, #0d9488 0%, #059669 100%);
+        color: white;
+        padding: 2px 10px;
+        border-radius: 20px;
+        font-size: 0.7rem;
+        font-weight: 600;
+    }
+
+    .dropdown-item {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        width: 100%;
+        padding: 10px 16px;
+        text-align: left;
+        background: none;
+        border: none;
+        cursor: pointer;
+        font-size: 14px;
+        color: #94a3b8;
+        transition: all 0.2s ease;
+    }
+
+        .dropdown-item:hover {
+            background: rgba(20, 184, 166, 0.1);
+            color: #14b8a6;
+        }
+
+    .dropdown-divider {
+        height: 1px;
+        margin: 6px 0;
+        background: rgba(20, 184, 166, 0.1);
+    }
+
+    .text-danger {
+        color: #f87171 !important;
+    }
+
+    /* ===== MODAL ===== */
+    .modal-backdrop {
+        position: fixed;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background: rgba(0,0,0,0.6);
+        z-index: 1040;
+    }
+
+    .modal-custom {
+        position: fixed;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%);
+        border: 1px solid rgba(20, 184, 166, 0.2);
+        border-radius: 1.5rem;
+        box-shadow: 0 20px 40px rgba(0,0,0,0.4);
+        z-index: 1050;
+        width: 100%;
+        max-width: 420px;
+    }
+
+    .modal-header-dark {
+        padding: 1.25rem 1.5rem;
+        border-bottom: 1px solid rgba(20, 184, 166, 0.1);
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+    }
+
+    .modal-body-dark {
+        padding: 1.5rem;
+    }
+
+    /* ===== FORM ===== */
+    .form-group {
+        margin-bottom: 1.25rem;
+    }
+
+    .form-label {
+        font-weight: 500;
+        font-size: 0.875rem;
+        margin-bottom: 0.5rem;
+        display: block;
+    }
+
+    .form-control-dark {
+        border-radius: 0.75rem;
+        border: 1px solid rgba(20, 184, 166, 0.2);
+        background: #0f172a;
+        color: #e2e8f0;
+        padding: 0.625rem 1rem;
+        font-size: 0.875rem;
+        width: 100%;
+    }
+
+        .form-control-dark:focus {
+            border-color: #14b8a6;
+            box-shadow: 0 0 0 3px rgba(20, 184, 166, 0.15);
+            outline: none;
+            background: #0f172a;
+            color: #e2e8f0;
+        }
+
+        .form-control-dark::placeholder {
+            color: #475569;
+        }
+
+        .form-control-dark.is-invalid {
+            border-color: #ef4444;
+        }
+
+    .input-group {
+        display: flex;
+        align-items: stretch;
+    }
+
+    .input-group-text-dark {
+        background: #1e293b;
+        border: 1px solid rgba(20, 184, 166, 0.2);
+        color: #14b8a6;
+        border-radius: 0.75rem 0 0 0.75rem;
+        padding: 0.625rem 1rem;
+        display: flex;
+        align-items: center;
+    }
+
+    .invalid-feedback {
+        color: #f87171;
+        font-size: 0.75rem;
+        margin-top: 0.25rem;
+        display: block;
+    }
+
+    .alert-danger {
+        background: rgba(239, 68, 68, 0.1);
+        border: 1px solid rgba(239, 68, 68, 0.2);
+        color: #f87171;
+        border-radius: 0.75rem;
+        padding: 0.75rem 1rem;
+        font-size: 0.875rem;
+    }
+
+    .alert-info {
+        background: rgba(20, 184, 166, 0.1);
+        border: 1px solid rgba(20, 184, 166, 0.2);
+        color: #14b8a6;
+        border-radius: 0.75rem;
+        padding: 0.75rem 1rem;
+        font-size: 0.875rem;
+    }
+
+    .text-teal {
+        color: #14b8a6 !important;
+    }
+
+    .text-white-50 {
+        color: rgba(255,255,255,0.5) !important;
+    }
+
+    .w-100 {
+        width: 100%;
+    }
+
+    .text-center {
+        text-align: center;
+    }
+
+    .mt-3 {
+        margin-top: 1rem;
+    }
+
+    .mb-0 {
+        margin-bottom: 0;
+    }
+
+    .me-1 {
+        margin-right: 0.25rem;
+    }
+
+    .me-2 {
+        margin-right: 0.5rem;
+    }
+
+    .ms-2 {
+        margin-left: 0.5rem;
+    }
+
+    .py-2 {
+        padding-top: 0.5rem;
+        padding-bottom: 0.5rem;
+    }
+
+    .small {
+        font-size: 0.75rem;
+    }
+
+    .spinner-border-sm {
+        width: 1rem;
+        height: 1rem;
+        border-width: 0.2em;
+    }
+
+    .d-flex {
+        display: flex;
+    }
+
+    .gap-2 {
+        gap: 0.5rem;
+    }
+
+    .align-items-center {
+        align-items: center;
+    }
+
+    .justify-content-between {
+        justify-content: space-between;
+    }
+
+    .flex-column {
+        flex-direction: column;
+    }
+
+    /* ===== RESPONSIVE ===== */
+    @@media (max-width: 768px) {
+        .nav-menu
+
+    {
+        display: none;
+    }
+
+    .main-content {
+        margin-left: 0;
+        width: 100%;
+    }
+
+    .top-bar-content {
+        padding: 0 1rem;
+    }
+
+    .brand-logo span {
+        display: none;
+    }
+
+    }
+</style>
+
+@code {
+    private int _currentClientId = 0;
+    private string _currentClientName = string.Empty;
+    private bool showDropdown = false;
+
+    private bool showLoginModal = false;
+    private bool isLoggingIn = false;
+    private string loginErrorMessage = string.Empty;
+    private string _loginPhone = string.Empty;
+    private string _loginPassword = string.Empty;
+    private bool showLoginPassword = false;
+    private bool loginPhoneError = false;
+    private bool loginPasswordError = false;
+
+    private bool showRegisterModal = false;
+    private bool isRegistering = false;
+    private string registerErrorMessage = string.Empty;
+    private string _regFullName = string.Empty;
+    private string _regPhone = string.Empty;
+    private string? _regEmail = null;
+    private string _regPassword = string.Empty;
+    private bool showRegPassword = false;
+    private bool regNameError = false;
+    private bool regPhoneError = false;
+    private bool regEmailError = false;
+    private bool regPasswordError = false;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadCurrentClient();
+    }
+
+    private async Task LoadCurrentClient()
+    {
+        try
+        {
+            var clientIdStr = await JS.InvokeAsync<string>("localStorage.getItem", "clientId");
+            if (!string.IsNullOrEmpty(clientIdStr) && int.TryParse(clientIdStr, out int clientId))
+            {
+                var client = await Context.Clients.FirstOrDefaultAsync(c => c.ClientId == clientId && c.IsActive);
+                if (client != null)
+                {
+                    _currentClientId = client.ClientId;
+                    _currentClientName = client.ClientFullName;
+                }
+                else
+                {
+                    await Logout();
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Ошибка: {ex.Message}");
+        }
+        StateHasChanged();
+    }
+
+    private void ShowLoginModal()
+    {
+        _loginPhone = string.Empty;
+        _loginPassword = string.Empty;
+        loginErrorMessage = string.Empty;
+        loginPhoneError = false;
+        loginPasswordError = false;
+        showLoginModal = true;
+        StateHasChanged();
+    }
+
+    private void CloseLoginModal()
+    {
+        showLoginModal = false;
+        StateHasChanged();
+    }
+
+    private void ShowRegisterModal()
+    {
+        ResetRegisterForm();
+        showRegisterModal = true;
+        StateHasChanged();
+    }
+
+    private void CloseRegisterModal()
+    {
+        showRegisterModal = false;
+        StateHasChanged();
+    }
+
+    private void SwitchToRegister()
+    {
+        CloseLoginModal();
+        ShowRegisterModal();
+    }
+
+    private void SwitchToLogin()
+    {
+        CloseRegisterModal();
+        ShowLoginModal();
+    }
+
+    private void ResetRegisterForm()
+    {
+        _regFullName = string.Empty;
+        _regPhone = string.Empty;
+        _regEmail = null;
+        _regPassword = string.Empty;
+        registerErrorMessage = string.Empty;
+        regNameError = false;
+        regPhoneError = false;
+        regEmailError = false;
+        regPasswordError = false;
+    }
+
+    private bool ValidateLogin()
+    {
+        bool valid = true;
+        if (string.IsNullOrWhiteSpace(_loginPhone))
+        {
+            loginPhoneError = true;
+            valid = false;
+        }
+        else
+            loginPhoneError = false;
+
+        if (string.IsNullOrWhiteSpace(_loginPassword))
+        {
+            loginPasswordError = true;
+            valid = false;
+        }
+        else
+            loginPasswordError = false;
+
+        return valid;
+    }
+
+    private bool ValidateRegister()
+    {
+        bool valid = true;
+        if (string.IsNullOrWhiteSpace(_regFullName))
+        {
+            regNameError = true;
+            valid = false;
+        }
+        else
+            regNameError = false;
+
+        if (string.IsNullOrWhiteSpace(_regPhone) || _regPhone.Length < 10)
+        {
+            regPhoneError = true;
+            valid = false;
+        }
+        else
+            regPhoneError = false;
+
+        if (!string.IsNullOrWhiteSpace(_regEmail) && !_regEmail.Contains("@"))
+        {
+            regEmailError = true;
+            valid = false;
+        }
+        else
+            regEmailError = false;
+
+        if (string.IsNullOrWhiteSpace(_regPassword) || _regPassword.Length < 6)
+        {
+            regPasswordError = true;
+            valid = false;
+        }
+        else
+            regPasswordError = false;
+
+        return valid;
+    }
+
+    private async Task Login()
+    {
+        if (!ValidateLogin())
+        {
+            StateHasChanged();
+            return;
+        }
+
+        isLoggingIn = true;
+        loginErrorMessage = string.Empty;
+        StateHasChanged();
+
+        try
+        {
+            var client = await Context.Clients.FirstOrDefaultAsync(c => c.ClientPhone == _loginPhone && c.IsActive);
+            if (client == null)
+                loginErrorMessage = "Клиент не найден";
+            else
+            {
+                await JS.InvokeVoidAsync("localStorage.setItem", "clientId", client.ClientId.ToString());
+                _currentClientId = client.ClientId;
+                _currentClientName = client.ClientFullName;
+                CloseLoginModal();
+                Navigation.NavigateTo("/", true);
+            }
+        }
+        catch (Exception ex)
+        {
+            loginErrorMessage = $"Ошибка: {ex.Message}";
+        }
+        finally
+        {
+            isLoggingIn = false;
+            StateHasChanged();
+        }
+    }
+
+    private async Task Register()
+    {
+        if (!ValidateRegister())
+        {
+            StateHasChanged();
+            return;
+        }
+
+        isRegistering = true;
+        registerErrorMessage = string.Empty;
+        StateHasChanged();
+
+        try
+        {
+            var existing = await Context.Clients.FirstOrDefaultAsync(c => c.ClientPhone == _regPhone);
+            if (existing != null)
+            {
+                registerErrorMessage = "Клиент с таким номером уже зарегистрирован";
+                return;
+            }
+
+            var newClient = new Client
+            {
+                ClientFullName = _regFullName,
+                ClientPhone = _regPhone,
+                ClientEmail = string.IsNullOrWhiteSpace(_regEmail) ? null : _regEmail,
+                IsActive = true
+            };
+            Context.Clients.Add(newClient);
+            await Context.SaveChangesAsync();
+
+            CloseRegisterModal();
+            _loginPhone = _regPhone;
+            _loginPassword = string.Empty;
+            ShowLoginModal();
+        }
+        catch (DbUpdateException ex)
+        {
+            var msg = ex.InnerException?.Message ?? ex.Message;
+            if (msg.Contains("IX_Clients_ClientPhone"))
+                registerErrorMessage = "Номер уже занят";
+            else if (msg.Contains("IX_Clients_ClientEmail"))
+                registerErrorMessage = "Email уже занят";
+            else
+                registerErrorMessage = $"Ошибка БД: {msg}";
+        }
+        catch (Exception ex)
+        {
+            registerErrorMessage = $"Ошибка: {ex.Message}";
+        }
+        finally
+        {
+            isRegistering = false;
+            StateHasChanged();
+        }
+    }
+
+    private void ToggleDropdown()
+    {
+        showDropdown = !showDropdown;
+        StateHasChanged();
+    }
+
+    private void CloseDropdownOnOutside()
+    {
+        if (showDropdown)
+        {
+            showDropdown = false;
+            StateHasChanged();
+        }
+    }
+
+    private void GoToMyAppointments()
+    {
+        showDropdown = false;
+        Navigation.NavigateTo("/appointments");
+    }
+
+    private async Task Logout()
+    {
+        showDropdown = false;
+        await JS.InvokeVoidAsync("localStorage.removeItem", "clientId");
+        _currentClientId = 0;
+        _currentClientName = string.Empty;
+        StateHasChanged();
+        Navigation.NavigateTo("/", true);
+    }
+}
